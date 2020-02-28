@@ -1,0 +1,1045 @@
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Chart</title>
+  <style>
+    body {
+      width: 100%;
+    }
+
+    #wrapper {
+      width: 70%;
+      margin: 0 auto;
+    }
+
+    #dashboard_div {
+      width: 800px;
+      border: 1px solid #ccc;
+    }
+
+    #chart_div {
+      height: 400px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    #filter_div {
+      height: 50px;
+    }
+
+    #volume_div {
+      border-bottom: 1px solid #ccc;
+    }
+
+    #rsi_div {
+      border-bottom: 1px solid #ccc;
+    }
+
+    #rsi_error {
+      border-bottom: 1px solid #ccc;
+    }
+
+    #macd_div {
+      border-bottom: 1px solid #ccc;
+    }
+
+    #macd_error {
+      border-bottom: 1px solid #ccc;
+    }
+
+    #hv_div {
+      border-bottom: 1px solid #ccc;
+    }
+  </style>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script type="text/javascript">
+    google.charts.load('current', { 'packages': ['corechart', 'controls'] });
+
+    // Config
+    var config = {
+      api: {
+        enable: true,
+        intervel: 1000 * 3
+      },
+      candlestick: {
+        product_code: 'BTC_JPY',
+        duration: '1m',
+        limit: 365,
+        numViews: 5,
+      },
+      dataTable: {
+        index: 0,
+        value: null
+      },
+      sma: {
+        enable: false,
+        indexes: [],
+        periods: [],
+        values: []
+      },
+      ema: {
+        enable: false,
+        indexes: [],
+        periods: [],
+        values: []
+      },
+      bbands: {
+        enable: false,
+        indexes: [],
+        n: 20,
+        k: 2,
+        up: [],
+        mid: [],
+        down: []
+      },
+      ichimoku: {
+        enable: false,
+        indexes: [],
+        tenkan_period: 9,
+        base_period: 26,
+        pre1_shift: 26,
+        pre2_period: 52,
+        delay_period: 26,
+        tenkan: [],
+        base: [],
+        pre1: [],
+        pre2: [],
+        delay: []
+      },
+      events: {
+        enable: false,
+        indexes: [],
+        values: [],
+        first: null
+      },
+      rsi: {
+        enable: false,
+        indexes: { 'up': 0, 'values': 0, 'down': 0 },
+        period: 14,
+        up: 70,
+        values: [],
+        down: 30
+      },
+      macd: {
+        enable: false,
+        indexes: { 'macd': 0, 'signal': 0, 'histogram': 0 },
+        short_period: 12,
+        long_period: 26,
+        signal_period: 9,
+        macd: [],
+        signal: [],
+        histogram: []
+      },
+      hv: {
+        enable: false,
+        indexes: [],
+        periods: [],
+        values: []
+      }
+    };
+
+    function initConfigValues() {
+      config.dataTable.index = 0;
+      config.sma.indexes = [];
+      config.sma.values = [];
+      config.ema.indexes = [];
+      config.ema.values = [];
+      config.bbands.indexes = [];
+      config.bbands.up = [];
+      config.bbands.mid = [];
+      config.bbands.down = [];
+      config.ichimoku.indexes = [];
+      config.ichimoku.tenkan = [];
+      config.ichimoku.base = [];
+      config.ichimoku.pre1 = [];
+      config.ichimoku.pre2 = [];
+      config.ichimoku.delay = [];
+      config.events.indexes = [];
+      config.events.values = [];
+      config.rsi.indexes = { 'up': 0, 'values': 0, 'down': 0 };
+      config.rsi.values = [];
+      config.macd.indexes = { 'macd': 0, 'signal': 0, 'histogram': 0 };
+      config.macd.macd = [];
+      config.macd.signal = [];
+      config.macd.histogram = [];
+      config.hv.indexes = [];
+      config.hv.values = [];
+    }
+
+    // DateTimeFormat
+    function dateTimeFormatByDuration(duration) {
+      switch (duration) {
+        case '1s': return 'm:ss';
+        case '1m': return 'H:mm';
+        case '1h': return 'd H';
+        case '1d': return 'M d';
+      }
+    }
+
+    // Draw chart
+    function drawChart(dataTable) {
+      var chartDiv = $('#chart_div');
+      var charts = [];
+      // Dashboard
+      var dashboard = new google.visualization.Dashboard(chartDiv);
+      // Main chart(candles)
+      var mainChart = new google.visualization.ChartWrapper({
+        chartType: 'ComboChart',
+        containerId: 'chart_div',
+        options: {
+          hAxis: {
+            title: 'Time of Day',
+            format: dateTimeFormatByDuration(config.candlestick.duration)
+          },
+          legend: { 'position': 'none' },
+          candlestick: {
+            fallingColor: { strokeWidth: 0, fill: '#a52714' },
+            risingColor: { strokeWidth: 0, fill: '#0f9d58' }
+          },
+          seriesType: "candlesticks",
+          series: {}
+        },
+        view: {
+          columns: [0, 1, 2, 3, 4]
+        }
+      });
+      charts.push(mainChart);
+
+      var options = mainChart.getOptions();
+      var view = mainChart.getView();
+
+      // SMA column
+      if (config.sma.enable == true) {
+        for (i = 0; i < config.sma.indexes.length; i++) {
+          options.series[config.sma.indexes[i]] = { type: 'line' };
+          view.columns.push(config.candlestick.numViews + config.sma.indexes[i]);
+        }
+      }
+
+      // EMA column
+      if (config.ema.enable == true) {
+        for (i = 0; i < config.ema.indexes.length; i++) {
+          options.series[config.ema.indexes[i]] = { type: 'line' };
+          view.columns.push(config.candlestick.numViews + config.ema.indexes[i]);
+        }
+      }
+
+      // BBands column
+      if (config.bbands.enable == true) {
+        for (i = 0; i < config.bbands.indexes.length; i++) {
+          options.series[config.bbands.indexes[i]] = {
+            type: 'line',
+            color: 'blue',
+            lineWidth: 1
+          };
+          view.columns.push(config.candlestick.numViews + config.bbands.indexes[i]);
+        }
+      }
+
+      // Ichimoku column
+      if (config.ichimoku.enable == true) {
+        for (i = 0; i < config.ichimoku.indexes.length; i++) {
+          options.series[config.ichimoku.indexes[i]] = {
+            type: 'line',
+            lineWidth: 1
+          };
+          view.columns.push(config.candlestick.numViews + config.ichimoku.indexes[i]);
+        }
+      }
+
+      
+      // Signal Events
+      if (config.events.enable == true && config.events.indexes.length > 0) {
+        options.series[config.events.indexes[0]] = {
+          type: 'line',
+          enableInteractivity: false,
+          lineWidth: 0
+        };
+        view.columns.push(config.candlestick.numViews + config.events.indexes[0])
+        view.columns.push(config.candlestick.numViews + config.events.indexes[1])
+      }
+
+      // Volume chart
+      var volumeChart = new google.visualization.ChartWrapper({
+        chartType: 'ColumnChart',
+        containerId: 'volume_div',
+        options: {
+          hAxis: {
+            format: dateTimeFormatByDuration(config.candlestick.duration)
+          },
+          legend: { 'position': 'none' }
+        },
+        view: {
+          columns: [0, 5]
+        }
+      });
+      charts.push(volumeChart);
+
+      // RSI Chart
+      if (config.rsi.enable == true) {
+        if (config.rsi.indexes['up'] && config.rsi.indexes['values'] && config.rsi.indexes['down']) {
+          var up_index = config.candlestick.numViews + config.rsi.indexes['up'];
+          var values_index = config.candlestick.numViews + config.rsi.indexes['values'];
+          var down_index = config.candlestick.numViews + config.rsi.indexes['down'];
+          var rsiChart = new google.visualization.ChartWrapper({
+            chartType: 'LineChart',
+            containerId: 'rsi_div',
+            options: {
+              hAxis: {
+                format: dateTimeFormatByDuration(config.candlestick.duration)
+              },
+              legend: { 'position': 'none' },
+              series: {
+                0: { color: 'black', lineWidth: 1 },
+                1: { color: '#e2431e' },
+                2: { color: 'black', lineWidth: 1 },
+              }
+            },
+            view: {
+              columns: [0, up_index, values_index, down_index]
+            }
+          });
+          charts.push(rsiChart);
+          $('#rsi_div').show();
+          $('#rsi_error').hide();
+        } else {
+          $('#rsi_div').hide();
+          $('#rsi_error').show();
+        }
+      } else {
+        $('#rsi_div').hide();
+        $('#rsi_error').hide();
+      }
+
+      // MACD Chart
+      if (config.macd.enable == true) {
+        if (config.macd.indexes['macd'] && config.macd.indexes['signal'] && config.macd.indexes['histogram']) {
+          var macd_index = config.candlestick.numViews + config.macd.indexes['macd'];
+          var signal_index = config.candlestick.numViews + config.macd.indexes['signal'];
+          var histogram_index = config.candlestick.numViews + config.macd.indexes['histogram'];
+          var macdChart = new google.visualization.ChartWrapper({
+            chartType: 'ComboChart',
+            containerId: 'macd_div',
+            options: {
+              hAxis: {
+                format: dateTimeFormatByDuration(config.candlestick.duration)
+              },
+              legend: { 'position': 'none' },
+              seriesType: 'bars',
+              series: {
+                0: { type: 'line', lineWidth: 1 },
+                1: { type: 'line', lineWidth: 1 }
+              }
+            },
+            view: {
+              columns: [0, macd_index, signal_index, histogram_index]
+            }
+          });
+          charts.push(macdChart);
+          $('#macd_div').show();
+          $('#macd_error').hide();
+        } else {
+          $('#macd_div').hide();
+          $('#macd_error').show();
+        }
+      } else {
+        $('#macd_div').hide();
+        $('#macd_error').hide();
+      }
+
+      // Historical Volatility
+      if (config.hv.enable == true) {
+        var hvChart = new google.visualization.ChartWrapper({
+          chartType: 'LineChart',
+          containerId: 'hv_div',
+          options: {
+            hAxis: {
+              format: dateTimeFormatByDuration(config.candlestick.duration)
+            },
+            legend: { 'position': 'none' },
+            series: {}
+          },
+          view: {
+            columns: [0]
+          }
+        });
+        charts.push(hvChart);
+
+        var hv_options = hvChart.getOptions()
+        var hv_view = hvChart.getView();
+
+        for (i = 0; i < config.hv.indexes.length; i++) {
+          hv_options.series[config.hv.indexes[i]] = {
+            type: 'line',
+            lineWidth: 1
+          }
+          hv_view.columns.push(config.candlestick.numViews + config.hv.indexes[i]);
+        }
+        $('#hv_div').show();
+      } else {
+        $('#hv_div').hide();
+      }
+
+
+      // Range filter
+      var controlWrapper = new google.visualization.ControlWrapper({
+        controlType: 'ChartRangeFilter',
+        containerId: 'filter_div',
+        options: {
+          filterColumnIndex: 0,
+          ui: {
+            chartType: 'LineChart',
+            chartOptions: {
+              hAxis: {
+                format: dateTimeFormatByDuration(config.candlestick.duration)
+              }
+            },
+            chartView: {
+              columns: [0, 4]
+            }
+          }
+        }
+      });
+
+      dashboard.bind(controlWrapper, charts);
+      dashboard.draw(dataTable);
+    }
+
+
+    // Send function
+    function send() {
+      if (config.api.enable == false) {
+        return
+      }
+      var params = {
+        'product_code': config.candlestick.product_code,
+        'limit': config.candlestick.limit,
+        'duration': config.candlestick.duration
+      }
+
+      if (config.sma.enable == true) {
+        params['sma'] = true;
+        params['sma_period1'] = config.sma.periods[0];
+        params['sma_period2'] = config.sma.periods[1];
+        params['sma_period3'] = config.sma.periods[2];
+      }
+
+      if (config.ema.enable == true) {
+        params['ema'] = true;
+        params['ema_period1'] = config.ema.periods[0];
+        params['ema_period2'] = config.ema.periods[1];
+        params['ema_period3'] = config.ema.periods[2];
+      }
+
+      if (config.bbands.enable == true) {
+        params['bbands'] = true;
+        params['bbands_n'] = config.bbands.n;
+        params['bbands_k'] = config.bbands.k;
+      }
+
+      if (config.ichimoku.enable == true) {
+        params['ichimoku'] = true;
+        params['ichimoku_tenkan_period'] = config.ichimoku.tenkan_period;
+        params['ichimoku_base_period'] = config.ichimoku.base_period;
+        params['ichimoku_pre1_shift'] = config.ichimoku.pre1_shift;
+        params['ichimoku_pre2_period'] = config.ichimoku.pre2_period;
+        params['ichimoku_delay_period'] = config.ichimoku.delay_period;
+      }
+
+      if (config.events.enable == true) {
+        params['events'] = true;
+      }
+
+      if (config.rsi.enable == true) {
+        params['rsi'] = true;
+        params['rsi_period'] = config.rsi.period;
+      }
+
+      if (config.macd.enable == true) {
+        params['macd'] = true;
+        params['macd_short_period'] = config.macd.short_period;
+        params['macd_long_period'] = config.macd.long_period;
+        params['macd_signal_period'] = config.macd.signal_period;
+      }
+
+      if (config.hv.enable == true) {
+        params['hv'] = true;
+        params['hv_period1'] = config.hv.periods[0];
+        params['hv_period2'] = config.hv.periods[1];
+        params['hv_period3'] = config.hv.periods[2];
+      }
+
+
+      $.ajax({
+        url: '/api/candle',
+        type: 'GET',
+        data: params
+      })
+        .done((result) => {
+          initConfigValues();
+          // Create dataTable
+          var dataTable = new google.visualization.DataTable();
+          dataTable.addColumn('date', 'Date');
+          dataTable.addColumn('number', 'Low');
+          dataTable.addColumn('number', 'Open');
+          dataTable.addColumn('number', 'Close');
+          dataTable.addColumn('number', 'High');
+          dataTable.addColumn('number', 'Volume');
+
+          if (result['smas'] != undefined) {
+            for (i = 0; i < result['smas'].length; i++) {
+              var smaData = result['smas'][i];
+              if (smaData.length == 0) { continue; }
+              config.dataTable.index += 1;
+              config.sma.indexes[i] = config.dataTable.index;
+              dataTable.addColumn('number', 'SMA' + smaData['period'].toString());
+              config.sma.values[i] = smaData['values'];
+            }
+          }
+
+          if (result['emas'] != undefined) {
+            for (i = 0; i < result['emas'].length; i++) {
+              var emaData = result['emas'][i];
+              if (emaData.length == 0) { continue; }
+              config.dataTable.index += 1;
+              config.ema.indexes[i] = config.dataTable.index;
+              dataTable.addColumn('number', 'EMA' + emaData['period'].toString());
+              config.ema.values[i] = emaData['values'];
+            }
+          }
+
+          if (result['bbands'] != undefined) {
+            var n = result['bbands']['n'];
+            var k = result['bbands']['k'];
+            var up = result['bbands']['up'];
+            var mid = result['bbands']['mid'];
+            var down = result['bbands']['down'];
+            config.dataTable.index += 1;
+            config.bbands.indexes[0] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.bbands.indexes[1] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.bbands.indexes[2] = config.dataTable.index;
+            dataTable.addColumn('number', 'BBands Up(' + n + ',' + k + ')');
+            dataTable.addColumn('number', 'BBands Mid(' + n + ',' + k + ')');
+            dataTable.addColumn('number', 'BBands Down(' + n + ',' + k + ')');
+            config.bbands.up = up;
+            config.bbands.mid = mid;
+            config.bbands.down = down;
+          }
+
+          if (result['ichimoku'] != undefined) {
+            var tenkan = result['ichimoku']['tenkan'];
+            var base = result['ichimoku']['base'];
+            var pre1 = result['ichimoku']['pre1'];
+            var pre2 = result['ichimoku']['pre2'];
+            var delay = result['ichimoku']['delay'];
+            config.dataTable.index += 1;
+            config.ichimoku.indexes[0] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.ichimoku.indexes[1] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.ichimoku.indexes[2] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.ichimoku.indexes[3] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.ichimoku.indexes[4] = config.dataTable.index;
+            dataTable.addColumn('number', 'Ichimoku Tenkan');
+            dataTable.addColumn('number', 'Ichimoku Base');
+            dataTable.addColumn('number', 'Ichimoku Pre1');
+            dataTable.addColumn('number', 'Ichimoku Pre2');
+            dataTable.addColumn('number', 'Ichimoku Delay');
+            config.ichimoku.tenkan = tenkan;
+            config.ichimoku.base = base;
+            config.ichimoku.pre1 = pre1;
+            config.ichimoku.pre2 = pre2;
+            config.ichimoku.delay = delay;
+          }
+
+          if (result['events'] != undefined) {
+            config.dataTable.index += 1;
+            config.events.indexes[0] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.events.indexes[1] = config.dataTable.index;
+
+            dataTable.addColumn('number', 'Marker');
+            dataTable.addColumn({type:'string', role:'annotation'});
+
+            config.events.values = result['events']['signals'];
+            config.events.first = config.events.values.shift();
+
+            if (result['events']['profit'] != undefined) {
+              profit = '&yen' + String(Math.round(result['events']['profit'] * 100) / 100);
+              console.log(profit);
+              $('#profit').html(profit);
+            }
+          }
+
+          if (result['rsi'] != undefined) {
+            config.dataTable.index += 1;
+            config.rsi.indexes['up'] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.rsi.indexes['values'] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.rsi.indexes['down'] = config.dataTable.index;
+            config.rsi.period = result['rsi']['period'];
+            config.rsi.values = result['rsi']['values']
+            dataTable.addColumn('number', 'RSI Thread');
+            dataTable.addColumn('number', 'RSI (' + config.rsi.period + ')');
+            dataTable.addColumn('number', 'RSI Thread');
+          }
+
+          if (result['macd'] != undefined) {
+            config.dataTable.index += 1;
+            config.macd.indexes['macd'] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.macd.indexes['signal'] = config.dataTable.index;
+            config.dataTable.index += 1;
+            config.macd.indexes['histogram'] = config.dataTable.index;
+            config.macd.short_period = result['macd']['short_period'];
+            config.macd.long_period = result['macd']['long_period'];
+            config.macd.signal_period = result['macd']['signal_period'];
+            config.macd.macd = result['macd']['macd'];
+            config.macd.signal = result['macd']['signal'];
+            config.macd.histogram = result['macd']['histogram'];
+            dataTable.addColumn(
+              'number',
+              'MACD (' + config.macd.short_period + ',' + config.macd.long_period + ',' + config.macd.signal_period + ')'
+            );
+            dataTable.addColumn(
+              'number',
+              'MACD Signal (' + config.macd.short_period + ',' + config.macd.long_period + ',' + config.macd.signal_period + ')'
+            );
+            dataTable.addColumn(
+              'number',
+              'MACD Histogram (' + config.macd.short_period + ',' + config.macd.long_period + ',' + config.macd.signal_period + ')'
+            );
+          }
+
+          if (result['hvs'] != undefined) {
+            for (i = 0; i < result['hvs'].length; i++) {
+              var hvData = result['hvs'][i];
+              config.dataTable.index += 1;
+              config.hv.indexes[i] = config.dataTable.index;
+              dataTable.addColumn('number', 'HV' + hvData['period'].toString());
+              config.hv.values[i] = hvData['values'];
+            }
+          }
+
+          var googleChartDate = [];
+          var candles = result['candles'];
+
+          // Insert datas into dataTable
+          for (var i = 0; i < candles.length; i++) {
+            var candle = candles[i];
+            var date = new Date(candle.time);
+            var datas = [date, candle.low, candle.open, candle.close, candle.high, candle.volume];
+
+            if (result['smas'] != undefined) {
+              for (j = 0; j < config.sma.values.length; j++) {
+                if (config.sma.values[j][i] == 0) {
+                  datas.push(null);
+                } else {
+                  datas.push(config.sma.values[j][i]);
+                }
+              }
+            }
+
+            if (result['emas'] != undefined) {
+              for (j = 0; j < config.ema.values.length; j++) {
+                if (config.ema.values[j][i] == 0) {
+                  datas.push(null);
+                } else {
+                  datas.push(config.ema.values[j][i]);
+                }
+              }
+            }
+
+            if (result['bbands'] != undefined) {
+              if (config.bbands.up[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.bbands.up[i]);
+              }
+              if (config.bbands.mid[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.bbands.mid[i]);
+              }
+              if (config.bbands.down[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.bbands.down[i]);
+              }
+            }
+
+            if (result['ichimoku'] != undefined) {
+              if (config.ichimoku.tenkan[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.ichimoku.tenkan[i]);
+              }
+              if (config.ichimoku.base[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.ichimoku.base[i]);
+              }
+              if (config.ichimoku.pre1[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.ichimoku.pre1[i]);
+              }
+              if (config.ichimoku.pre2[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.ichimoku.pre2[i]);
+              }
+              if (config.ichimoku.delay[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.ichimoku.delay[i]);
+              }
+            }
+
+            if (result['events'] != undefined) {
+              var event = config.events.first;
+              if (event == undefined) {
+                datas.push(null);
+                datas.push(null);
+              } else if (event.time == candle.time) {
+                datas.push(candle.high + 1);
+                datas.push(event.side);
+                config.events.first = config.events.values.shift();
+              } else {
+                datas.push(null);
+                datas.push(null);
+              }
+            }
+
+            if (result['rsi'] != undefined) {
+              datas.push(config.rsi.up);
+              if (config.rsi.values[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.rsi.values[i]);
+              }
+              datas.push(config.rsi.down);
+            }
+
+            if (result['macd'] != undefined) {
+              if (config.macd.macd[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.macd.macd[i]);
+              }
+              if (config.macd.signal[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.macd.signal[i]);
+              }
+              if (config.macd.histogram[i] == 0) {
+                datas.push(null);
+              } else {
+                datas.push(config.macd.histogram[i]);
+              }
+            }
+
+            if (result['hvs'] != undefined) {
+              for (j = 0; j < result['hvs'].length; j++) {
+                if (config.hv.values[j][i] == 0) {
+                  datas.push(null);
+                } else {
+                  datas.push(config.hv.values[j][i]);
+                }
+              }
+            }
+
+            googleChartDate.push(datas)
+          }
+          dataTable.addRows(googleChartDate);
+          console.log(result);
+          drawChart(dataTable);
+        })
+        .fail((result) => {
+          console.log(result);
+        })
+    };
+
+    // Set interval with Send function
+    setInterval(send, 1000 * 3);
+
+    // Change duration
+    function changeDuration(s) {
+      config.candlestick.duration = s;
+      send();
+    }
+
+    //// Onload ////
+    $(window).on('load', function () {
+      send();
+
+      // Api is not enabled while mouseover
+      $('#dashboard_div').on({
+        'mouseenter mouseover': function () {
+          config.api.enable = false;
+        },
+        'mouseleave mouseout': function () {
+          config.api.enable = true;
+        }
+      });
+
+      // Api is not enabled when checkbox is true
+      $('#inputApiStop').on('change', function () {
+        if (this.checked == true) {
+          config.api.enable = false;
+        } else {
+          config.api.enable = true;
+        }
+      });
+
+      // Signal Events
+      $('#inputEvents').on('change', function () {
+        if (this.checked == true) {
+          config.events.enable = true;
+        } else {
+          config.events.enable = false;
+          $('#profit').html('');
+        }
+        send();
+      });
+
+      // SMA
+      $('#inputSma').on('change', function () {
+        if (this.checked == true) {
+          config.sma.enable = true;
+        } else {
+          config.sma.enable = false;
+        }
+        send();
+      });
+
+      $('#inputSmaPeriod1').on('change', function () {
+        config.sma.periods[0] = this.value;
+        send();
+      });
+      $('#inputSmaPeriod2').on('change', function () {
+        config.sma.periods[1] = this.value;
+        send();
+      });
+      $('#inputSmaPeriod3').on('change', function () {
+        config.sma.periods[2] = this.value;
+        send();
+      });
+
+      // EMA
+      $('#inputEma').on('change', function () {
+        if (this.checked == true) {
+          config.ema.enable = true;
+        } else {
+          config.ema.enable = false;
+        }
+        send();
+      });
+
+      $('#inputEmaPeriod1').on('change', function () {
+        config.ema.periods[0] = this.value;
+        send();
+      });
+      $('#inputEmaPeriod2').on('change', function () {
+        config.ema.periods[1] = this.value;
+        send();
+      });
+      $('#inputEmaPeriod3').on('change', function () {
+        config.ema.periods[2] = this.value;
+        send();
+      });
+
+      //BBands
+      $('#inputBBands').on('change', function () {
+        if (this.checked == true) {
+          config.bbands.enable = true;
+        } else {
+          config.bbands.enable = false;
+        }
+        send();
+      });
+
+      $('#inputBBandsN').on('change', function () {
+        config.bbands.n = this.value;
+        send();
+      });
+
+      $('#inputBBandsK').on('change', function () {
+        config.bbands.k = this.value;
+        send();
+      });
+
+      // Ichimoku
+      $('#inputIchimoku').on('change', function () {
+        if (this.checked == true) {
+          config.ichimoku.enable = true;
+        } else {
+          config.ichimoku.enable = false;
+        }
+        send();
+      });
+      $('#inputIchimokuTenkanPeriod').on('change', function () {
+        config.ichimoku.tenkan_period = this.value;
+        sned();
+      });
+      $('#inputIchimokuBasePeriod').on('change', function () {
+        config.ichimoku.base_period = this.value;
+        sned();
+      });
+      $('#inputIchimokuPre1Shift').on('change', function () {
+        config.ichimoku.pre1_shift = this.value;
+        sned();
+      });
+      $('#inputIchimokuPre2Period').on('change', function () {
+        config.ichimoku.pre2_period = this.value;
+        sned();
+      });
+      $('#inputIchimokuDelayPeriod').on('change', function () {
+        config.ichimoku.delay_period = this.value;
+        sned();
+      });
+
+      // RSI
+      $('#inputRSI').on('change', function () {
+        if (this.checked == true) {
+          config.rsi.enable = true;
+        } else {
+          config.rsi.enable = false;
+        }
+        send();
+      });
+      $('#inputRSIPeriod').on('change', function () {
+        config.rsi.period = this.value;
+        send();
+      });
+
+      // MACD
+      $('#inputMACD').on('change', function () {
+        if (this.checked == true) {
+          config.macd.enable = true;
+        } else {
+          config.macd.enable = false;
+        }
+        send();
+      });
+      $('#inputMACDShortPeriod').on('change', function () {
+        config.macd.short_period = this.value;
+        send();
+      });
+      $('#inputMACDLongPeriod').on('change', function () {
+        config.macd.long_period = this.value;
+        send();
+      });
+      $('#inputMACDSignalPeriod').on('change', function () {
+        config.macd.signal_period = this.value;
+        send();
+      });
+
+      // Historical Volatility
+      $('#inputHV').on('change', function () {
+        if (this.checked == true) {
+          config.hv.enable = true;
+        } else {
+          config.hv.enable = false;
+        }
+        send();
+      });
+      $('#inputHVPeriod1').on('change', function () {
+        config.hv.periods[0] = this.value;
+        send();
+      });
+      $('#inputHVPeriod2').on('change', function () {
+        config.hv.periods[1] = this.value;
+        send();
+      });
+      $('#inputHVPeriod3').on('change', function () {
+        config.hv.periods[2] = this.value;
+        send();
+      });
+
+    });
+
+  </script>
+</head>
+
+<body>
+  <div id="wrapper">
+    <div id="main">
+      <div>
+        <button onclick="changeDuration('1s')">1s</button>
+        <button onclick="changeDuration('1m')">1m</button>
+        <button onclick="changeDuration('1h')">1h</button>
+        <button onclick="changeDuration('1d')">1d</button>
+      </div>
+      <div>
+        Stop <input id="inputApiStop" type="checkbox">
+      </div>
+      <div>
+        Signal Events <input id="inputEvents" type="checkbox">
+        <div>
+          Profit <span id="profit"></span>
+        </div>
+      </div>
+      <div>
+        SMA <input id="inputSma" type="checkbox">
+        Period<input id="inputSmaPeriod1" type="text" value="7" style="width: 50px">
+        <input id="inputSmaPeriod2" type="text" value="14" style="width: 50px">
+        <input id="inputSmaPeriod3" type="text" value="50" style="width: 50px">
+      </div>
+      <div>
+        EMA <input id="inputEma" type="checkbox">
+        Period<input id="inputEmaPeriod1" type="text" value="7" style="width: 50px">
+        <input id="inputEmaPeriod2" type="text" value="14" style="width: 50px">
+        <input id="inputEmaPeriod3" type="text" value="50" style="width: 50px">
+      </div>
+      <div>
+        BBands <input id="inputBBands" type="checkbox">
+        N <input id="inputBBandsN" type="text" value="20" style="width:50px">
+        K <input id="inputBBandsK" type="text" value="2" style="width:50px">
+      </div>
+      <div>
+        Ichimoku Cloud <input id="inputIchimoku" type="checkbox">
+        Tenkan Period <input id="inputIchimokuTenkanPeriod" type="text" value="9" style="width: 50px">
+        Base Period <input id="inputIchimokuBasePeriod" type="text" value="26" style="width: 50px">
+        Pre1 Shift <input id="inputIchimokuPre1Shift" type="text" value="26" style="width: 50px">
+        Pre2 Period <input id="inputIchimokuPre2Period" type="text" value="52" style="width: 50px">
+        Delay Period <input id="inputIchimokuDelayPeriod" type="text" value="26" style="width: 50px">
+      </div>
+      <div>
+        RSI <input id="inputRSI" type="checkbox">
+        Period <input id="inputRSIPeriod" type="text" value="14" style="width: 50px">
+      </div>
+      <div>
+        MACD <input id="inputMACD" type="checkbox">
+        Short Period <input id="inputMACDShortPeriod" type="text" value="12" style="width: 50px">
+        Long Period <input id="inputMACDLongPeriod" type="text" value="26" style="width: 50px">
+        Signal Period <input id="inputMACDSignalPeriod" type="text" value="9" style="width: 50px">
+      </div>
+      <div>
+        Historical Volatility <input id="inputHV" type="checkbox">
+        Period1 <input id="inputHVPeriod1" type="text" value="21" style="width: 50px">
+        Period2 <input id="inputHVPeriod2" type="text" value="63" style="width: 50px">
+        Period3 <input id="inputHVPeriod3" type="text" value="252" style="width: 50px">
+      </div>
+      <div id="dashboard_div">
+        <div id="chart_div"></div>
+        <div id="volume_div"></div>
+        <div id="rsi_div"></div>
+        <div id="rsi_error" hidden>RSI period is larger than the number of candlesticks!</div>
+        <div id="macd_div"></div>
+        <div id="macd_error" hidden>MACD period is larger than the number of candlesticks!</div>
+        <div id="hv_div"></div>
+        <div id="filter_div"></div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
