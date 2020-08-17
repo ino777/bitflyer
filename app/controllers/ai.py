@@ -47,7 +47,7 @@ class AI(object):
     
     def update_optimize_params(self, is_continue):
         df = candle.get_all_candles(self.product_code, self.duration, self.past_period)
-        self.optimize_params = df.optimize_params()
+        self.optimize_params = df.optimize_params() if df else None
         if not self.optimize_params and is_continue and not self.back_test:
             time.sleep(10*config.Config.durations[self.duration])
             self.update_optimize_params(is_continue)

@@ -294,7 +294,7 @@ class DataFrameCandle(object):
         for period1 in range(5, 12):
             for period2 in range(12, 20):
                 signal_events = self.back_test_ema(period1, period2)
-                if not signal_events.signals:
+                if not signal_events or not signal_events.signals:
                     continue
                 profit = signal_events.profit()
                 if performance < profit:
@@ -329,7 +329,7 @@ class DataFrameCandle(object):
         for n in range(10, 20):
             for k in (i/10 for i in range(17, 23)):
                 signal_events = self.back_test_bb(n, k)
-                if not signal_events.signals:
+                if not signal_events or not signal_events.signals:
                     continue
                 profit = signal_events.profit()
                 if performance < profit:
@@ -358,7 +358,7 @@ class DataFrameCandle(object):
 
     def optimize_ichimoku(self):
         signal_events = self.back_test_ichimoku()
-        if not signal_events.signals:
+        if not signal_events or not signal_events.signals:
             return 0.0
         return signal_events.profit()
 
@@ -390,7 +390,7 @@ class DataFrameCandle(object):
             for long_p in range(20, 30):
                 for signal_p in range(5, 15):
                     signal_events = self.back_test_macd(short_p, long_p, signal_p)
-                    if not signal_events.signals:
+                    if not signal_events or not signal_events.signals:
                         continue
                     profit = signal_events.profit()
                     if performance < profit:
@@ -428,7 +428,7 @@ class DataFrameCandle(object):
             for buy_thread in range(27, 33):
                 for sell_thread in range(67, 73):
                     signal_events = self.back_test_rsi(period, buy_thread, sell_thread)
-                    if not signal_events.signals:
+                    if not signal_events or not signal_events.signals:
                         continue
                     profit = signal_events.profit()
                     if performance < profit:
