@@ -27,28 +27,48 @@ class AI(object):
     自動売買システム
     '''
     def __init__(self, product_code, use_percent, duration, past_period, stop_limit_percent, back_test):
+        # APIClient
         self.api = bitflyer.APIClient(config.Config.api_key, config.Config.api_secret)
+
+        # Product code
         self.product_code = product_code
+        # Coin code
         self.coin_code = product_code.split('_')[0]
+        # currency code
         self.currency_code = product_code.split('_')[1]
+        # Order settings
         self.use_percent = use_percent
         self.minute_to_expires = 1
+        # duration
         self.duration = duration
+        # Period
         self.past_period = past_period
+        # Simulation version
+        self.back_test = back_test
         if back_test:
             self.signal_events = events.SignalEvents([])
         else:
             self.signal_events = events.get_signal_events_by_count(1)
+
+        # Semaphore
         self.trade_semaphore = threading.Semaphore(1)
-        self.back_test = back_test
+
+        # Start trade time
         self.start_trade = datetime.datetime.now()
+        # Stop limit
         self.stop_limit = 0.0
         self.stop_limit_percent = stop_limit_percent
 
+        # Optimized parameters
         self.optimize_params = None
+
+
         self.update_optimize_params(False)
     
     def update_optimize_params(self, is_continue):
+        '''
+        Update optimized trade parameters
+        '''
         df = candle.get_all_candles(self.product_code, self.duration, self.past_period)
         self.optimize_params = df.optimize_params() if df else None
         if self.optimize_params is None and is_continue and not self.back_test:
@@ -56,10 +76,15 @@ class AI(object):
             self.update_optimize_params(is_continue)
     
     def buy(self, candle:candle.Candle):
+        '''
+        Buy bit coin
+        '''
+        # Simulation
         if self.back_test:
             could_buy = self.signal_events.buy(self.product_code, candle.time, candle.close, 1.0, False)
             return '', could_buy
         
+        # 以下, 実際に購入する手続き
         if self.start_trade > candle.time:
             return
         if not self.signal_events.can_buy(candle.time):
@@ -91,10 +116,15 @@ class AI(object):
         return acceptance_id, is_order_completed
     
     def sell(self, candle:candle.Candle):
+        '''
+        Sell bit coin
+        '''
+        # Simulation
         if self.back_test:
             could_sell = self.signal_events.sell(self.product_code, candle.time, candle.close, 1.0, False)
             return '', could_sell
         
+        # 以下, 実際の売却する手続き
         if self.start_trade > candle.time:
             return
         if not self.signal_events.can_sell(candle.time):
@@ -122,8 +152,10 @@ class AI(object):
         return acceptance_id, is_order_completed
     
     def trade(self):
+        # セマフォ取得
         if not self.trade_semaphore.acquire(blocking=False):
             return
+
         params = self.optimize_params
         if params is None:
             logger.error('optimized params not found!')
@@ -156,56 +188,70 @@ class AI(object):
         if params.rsi_enable:
             rsi_value = mathlib.rsi(params.rsi_period, df.closes())
             rsi_trade_model = trade.TradeRsi(rsi_value, params.rsi_period, params.rsi_buy_thread, params.rsi_sell_thread)
-        
+
+
+        '''
+        シミュレーション時は全てのcandleに対して売買の計算をする
+        本番時は最新のcandleに対してのみ売買の計算をする
+        ''' 
+        cal_range = range(len(df.candles)) if self.back_test else [-1]
         # Count buy/sell point
-        for i in range(len(df.candles)):
-            buy_poinst, sell_point = 0, 0
+        for i in cal_range:
+            buy_point, sell_point = 0, 0
             if params.ema_enable:
                 if ema_trade_model.should_buy(i):
-                    buy_poinst += 1
+                    buy_point += 1
                 if ema_trade_model.should_sell(i):
                     sell_point += 1
             
             if params.bb_enable:
                 if bb_trade_model.should_buy(i, df.candles):
-                    buy_poinst += 1
+                    buy_point += 1
                 if bb_trade_model.should_sell(i, df.candles):
                     sell_point += 1
             
             if params.ichimoku_enable:
                 if ichimoku_trade_model.should_buy(i, df.candles):
-                    buy_poinst += 1
+                    buy_point += 1
                 if ichimoku_trade_model.should_sell(i, df.candles):
                     sell_point += 1
             
             if params.macd_enable:
                 if macd_trade_model.should_buy(i):
-                    buy_poinst += 1
+                    buy_point += 1
                 if macd_trade_model.should_sell(i):
                     sell_point += 1
             
             if params.rsi_enable:
                 if rsi_trade_model.should_buy(i):
-                    buy_poinst += 1
+                    buy_point += 1
                 if rsi_trade_model.should_sell(i):
                     sell_point += 1
             
-            if buy_poinst > 0:
-                _, is_order_complited = self.buy(df.candles[i])
-                if not is_order_complited:
+            # buy_pointが0より大きいなら買い
+            if buy_point > 0:
+                _, is_order_completed = self.buy(df.candles[i])
+                if not is_order_completed:
                     continue
                 self.stop_limit = df.candles[i].close * self.stop_limit_percent
             
+            # sell_pointが0より大きい、または終値がstop limitを下回りそうなら売り
             if sell_point > 0 or df.candles[i].close < self.stop_limit:
-                _, is_order_complited = self.sell(df.candles[i])
-                if not is_order_complited:
+                _, is_order_completed = self.sell(df.candles[i])
+                if not is_order_completed:
                     continue
                 self.stop_limit = 0.0
                 self.update_optimize_params(True)
-            
+
+        # セマフォ解放  
         self.trade_semaphore.release()
-    
+
+
+
     def get_available_balance(self):
+        '''
+        利用可能な資産
+        '''
         balances = self.api.get_balance()
         for balance in balances:
             if balance.currency_code == self.currency_code:

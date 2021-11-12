@@ -51,6 +51,10 @@ class SignalEvents(object):
         }
 
     def can_buy(self, time:datetime.datetime):
+        '''
+        現在買いが可能か
+        '''
+
         if not self.signals:
             return True
         
@@ -60,6 +64,9 @@ class SignalEvents(object):
         return False
 
     def can_sell(self, time:datetime.datetime):
+        '''
+        現在売りが可能か
+        '''
         if not self.signals:
             return False
 
@@ -69,6 +76,9 @@ class SignalEvents(object):
         return False
     
     def buy(self, product_code, time:datetime.datetime, price, size, should_save):
+        '''
+        買いのシグナルを作成
+        '''
         if not self.can_buy(time):
             return False
         signal_event = SignalEvent(time, product_code, 'BUY', price, size)
@@ -78,6 +88,9 @@ class SignalEvents(object):
         return True
 
     def sell(self, product_code, time:datetime.datetime, price, size, should_save):
+        '''
+        売りのシグナルを作成
+        '''
         if not self.can_sell(time):
             return False
         signal_event = SignalEvent(time, product_code, 'SELL', price, size)
@@ -87,6 +100,9 @@ class SignalEvents(object):
         return True
     
     def profit(self):
+        '''
+        損益計算
+        '''
         total = 0.0
         before_sell = 0.0
         is_holding = False
