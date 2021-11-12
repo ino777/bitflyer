@@ -154,7 +154,7 @@ class Order(object):
     price: float = 0
     # 期限切れまでの時間を分で指定
     minute_to_expire: float = 0
-    #  執行数量条件 を "GTC", "IOC", "FOK" のいずれかで指定
+    #  執行数量条件 を 'GTC', 'IOC', 'FOK' のいずれかで指定
     time_in_force: str = 'GTC'
 
 

@@ -96,9 +96,9 @@ class Candle(object):
     
 
 def get_candle(product_code, duration, date_time:datetime.datetime):
-    """
+    '''
     Returns the candle whose time is date_time from the db table given by product_code and duration
-    """
+    '''
     if not type(date_time) == datetime.datetime:
         raise TypeError('Type of "date_time" must be <class \'datetime.datetime\'>')
     table_name = base.get_candle_table_name(product_code, duration)
