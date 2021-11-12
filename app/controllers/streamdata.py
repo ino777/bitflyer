@@ -10,7 +10,6 @@ from app.controllers import ai
 
 logger = logging.getLogger(__name__)
 ''' Logger Config '''
-logger.setLevel(logging.DEBUG)
 handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
 
 stream_handler = logging.StreamHandler()
@@ -33,7 +32,9 @@ def stream_ingestion_data():
                 is_created = candle.create_or_update_candle(ticker, config.Config.product_code, duration)
                 if is_created == True and duration == config.Config.trade_duration:
                     ai.TRADE_AI.trade()
-        except KeyboardInterrupt:
-            print('exit')
+        except KeyboardInterrupt as err:
+            logger.error({
+                'error': err
+            })
             break
 

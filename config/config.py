@@ -2,6 +2,7 @@ import logging
 import sys
 import datetime
 import configparser
+from dataclasses import dataclass
 
 
 logger = logging.getLogger(__name__)
@@ -17,47 +18,43 @@ stream_handler.setFormatter(handler_format)
 logger.addHandler(stream_handler)
 
 
-def str2bool(s):
-    if s == 'true' or s == 'True':
-        return True
-    return False
 
+@dataclass
 class ConfigList(object):
-    '''
-    api_key,
-    api_secret,
-    log_file,
-    product_code,
-    timezone,
-    trade_duration,
-    durations,
-    db_name,
-    sqldriver,
-    port
-    '''
-    def __init__(
-            self, api_key, api_secret, log_file, log_stream_level, log_file_level, product_code, timezone, trade_duration,
-            durations, db_name, sqldriver, port,
-            back_test, use_percent, data_limit, stop_limit_percent, num_ranking):
-        self.api_key = api_key
-        self.api_secret = api_secret
-        self.log_file = log_file
-        self.log_stream_level = log_stream_level
-        self.log_file_level = log_file_level
-        self.product_code = product_code
-        self.timezone = timezone
-        self.trade_duration = trade_duration
-        
-        self.durations = durations
-        self.db_name = db_name
-        self.sqldriver = sqldriver
-        self.port = port
+    # API Key
+    api_key: str
+    api_secret: str
 
-        self.back_test = back_test
-        self.use_percent = use_percent
-        self.data_limit = data_limit
-        self.stop_limit_percent = stop_limit_percent
-        self.num_ranking = num_ranking
+    # Logger Settings
+    log_file: str
+    log_stream_level: int
+    log_file_level: int
+
+    # Product code (e.g. JPY)
+    product_code: str
+
+    # Timezone (e.g. Asia/Tokyo)
+    timezone: str
+
+    # Trade Duration (1s, 1m, 1d)
+    trade_duration: str
+    durations: dict
+
+    # DB
+    db_name: str
+    sqldriver: str
+
+    # Port
+    port: int
+
+    # Simulation
+    back_test: bool
+
+    # Simulation parameters
+    use_percent: float
+    data_limit: int
+    stop_limit_percent: float
+    num_ranking: int
 
 cfg = configparser.ConfigParser()
 
@@ -67,6 +64,7 @@ except FileNotFoundError as error:
     logger.error(error)
     sys.exit(1)
 
+# Log Levels
 log_levels ={
     'DEBUG': logging.DEBUG,
     'INFO': logging.INFO,
@@ -74,6 +72,7 @@ log_levels ={
     'ERROR': logging.ERROR
 }
 
+# Durations
 durations = {
     '1s': datetime.timedelta(seconds=1),
     '1m': datetime.timedelta(minutes=1),

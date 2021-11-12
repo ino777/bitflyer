@@ -1,5 +1,7 @@
 import logging
 import pandas
+from dataclasses import dataclass
+from typing import List
 
 from config import config
 from utils import mathlib
@@ -7,7 +9,6 @@ from . import candle, events, trade
 
 logger = logging.getLogger(__name__)
 ''' Logger Config '''
-logger.setLevel(logging.DEBUG)
 handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
 
 stream_handler = logging.StreamHandler()
@@ -17,80 +18,103 @@ stream_handler.setFormatter(handler_format)
 logger.addHandler(stream_handler)
 
 
+@dataclass
 class Sma(object):
-    def __init__(self, period, values):
-        self.period = int(period)
-        self.values = values
+    '''
+    Simple moving average
+    '''
+    period: int
+    values: List[float]
 
-
+@dataclass
 class Ema(object):
-    def __init__(self, period, values):
-        self.period = int(period)
-        self.values = values
+    '''
+    Exponential moving average
+    '''
+    period: int
+    values: List[float]
 
-
+@dataclass
 class Bbands(object):
-    def __init__(self, n, k, up, mid, down):
-        self.n = int(n)
-        self.k = k
-        self.up = up
-        self.mid = mid
-        self.down = down
+    '''
+    Bollinger Band
+    '''
+    n: int
+    k: int
+    up: List[float]
+    mid: List[float]
+    down: List[float]
 
+@dataclass
 class Ichimoku(object):
-    def __init__(self, tenkan_period, base_period, pre1_shift, pre2_period, delay_period, tenkan, base, pre1, pre2, delay):
-        self.tenkan_period = int(tenkan_period)
-        self.base_period = int(base_period)
-        self.pre1_shift = int(pre1_shift)
-        self.pre2_period = int(pre2_period)
-        self.delay_period = int(delay_period)
-        self.tenkan = tenkan
-        self.base = base
-        self.pre1 = pre1
-        self.pre2 = pre2
-        self.delay = delay
+    '''
+    Ichimoku clouds
+    '''
+    tenkan_period: int
+    base_period: int
+    pre1_shift: int
+    pre2_period: int
+    delay_period: int
+    tenkan: List[float]
+    base: List[float]
+    pre1: List[float]
+    pre2: List[float]
+    delay: List[float]
 
-
+@dataclass
 class Rsi(object):
-    def __init__(self, period, values):
-        self.period = period
-        self.values = values
+    '''
+    Relative strength index
+    '''
+    period: int
+    values: List[float]
 
-
+@dataclass
 class Macd(object):
-    def __init__(self, short_period, long_period, signal_period, macd, signal, histogram):
-        self.short_period = short_period
-        self.long_period = long_period
-        self.signal_period = signal_period
-        self.macd = macd
-        self.signal = signal
-        self.histogram = histogram
+    '''
+    MACD
+    '''
+    short_period: int
+    long_period: int
+    signal_period: int
+    macd: List[float]
+    signal: List[float]
+    histogram: List[float]
 
 
+@dataclass
 class HV(object):
-    """ Historical Volatility """
-    def __init__(self, period, values):
-        self.period = period
-        self.values = values
+    '''
+    Historical Volatility
+    '''
+    period: int
+    values: List[float]
 
+
+@dataclass
 class TradeParams(object):
-    def __init__(self, ema_enable, ema_period1, ema_period2, bb_enable, bb_n, bb_k, ichimoku_enable,
-            macd_enable, macd_short_period, macd_long_period, macd_signal_period, rsi_enable, rsi_period, rsi_buy_thread, rsi_sell_thread):
-        self.ema_enable = ema_enable
-        self.ema_period1 = ema_period1
-        self.ema_period2 = ema_period2
-        self.bb_enable = bb_enable
-        self.bb_n = bb_n
-        self.bb_k = bb_k
-        self.ichimoku_enable = ichimoku_enable
-        self.macd_enable = macd_enable
-        self.macd_short_period = macd_short_period
-        self.macd_long_period = macd_long_period
-        self.macd_signal_period = macd_signal_period
-        self.rsi_enable = rsi_enable
-        self.rsi_period = rsi_period
-        self.rsi_buy_thread = rsi_buy_thread
-        self.rsi_sell_thread = rsi_sell_thread
+    '''
+    Trade Params
+    '''
+    ema_enable: bool
+    ema_period1: int
+    ema_period2: int
+
+    bb_enable: bool
+    bb_n: int
+    bb_k: int
+
+    ichimoku_enable: bool
+
+    macd_enable: bool
+    macd_short_period: int
+    macd_long_period: int
+    macd_signal_period: int
+
+    rsi_enable: bool
+    rsi_period: int
+    rsi_buy_thread: int
+    rsi_sell_thread: int
 
 
 class Ranking(object):
@@ -133,6 +157,9 @@ class Rankings(object):
 
 
 class DataFrameCandle(object):
+    '''
+    Dataframe of candales
+    '''
     def __init__(self, product_code, duration, candles):
         self.product_code = product_code
         self.duration = duration
@@ -268,6 +295,9 @@ class DataFrameCandle(object):
         return False
 
     def back_test_ema(self, period1, period2):
+        '''
+        EMA simulation
+        '''
         len_candles = len(self.candles)
         if len_candles < period1 or len_candles < period2:
             return
@@ -287,6 +317,9 @@ class DataFrameCandle(object):
         return signal_events
     
     def optimize_ema(self):
+        '''
+        Obtains optimized EMA parameters by brute force method
+        '''
         performance = 0.0
         best_period1 = 7
         best_period2 = 14
@@ -304,6 +337,9 @@ class DataFrameCandle(object):
         return performance, best_period1, best_period2
 
     def back_test_bb(self, n, k):
+        '''
+        bbands simulation
+        '''
         len_candles = len(self.candles)
         if len_candles < n:
             return
@@ -322,6 +358,9 @@ class DataFrameCandle(object):
         return signal_events
 
     def optimize_bb(self):
+        '''
+        Obtains optimized bbands parameters by brute force method
+        '''
         performance = 0.0
         best_n = 20
         best_k = 2.0
@@ -339,6 +378,9 @@ class DataFrameCandle(object):
         return performance, best_n, best_k
     
     def back_test_ichimoku(self):
+        '''
+        Ichimoku simulation
+        '''
         len_candles = len(self.candles)
         if len_candles < 52:
             return
@@ -363,6 +405,9 @@ class DataFrameCandle(object):
         return signal_events.profit()
 
     def back_test_macd(self, short_period, long_period, signal_period):
+        '''
+        MACD simulation
+        '''
         len_candles = len(self.candles)
         if len_candles < long_period:
             return
@@ -381,6 +426,9 @@ class DataFrameCandle(object):
         return signal_events
     
     def optimize_macd(self):
+        '''
+        Obtains optimized MACD parameters by brute force method
+        '''
         performance = 0.0
         best_short_period = 12
         best_long_period = 26
@@ -401,6 +449,9 @@ class DataFrameCandle(object):
         return performance, best_short_period, best_long_period, best_signal_period
 
     def back_test_rsi(self, period, buy_thread, sell_thread):
+        '''
+        RSI simulation
+        '''
         len_candles = len(self.candles)
         if len_candles < period:
             return
@@ -419,6 +470,9 @@ class DataFrameCandle(object):
         return signal_events
     
     def optimize_rsi(self):
+        '''
+        Obtains optimiszed RSI parameters by brute force method
+        '''
         performance = 0.0
         best_period = 14
         best_buy_thread = 30
@@ -440,6 +494,10 @@ class DataFrameCandle(object):
         return performance, best_period, best_buy_thread, best_sell_thread
     
     def optimize_params(self):
+        '''
+        Returns optimized trade parameters.
+        
+        '''
         ema_performance, ema_period1, ema_period2 = self.optimize_ema()
         bb_performance, bb_n, bb_k = self.optimize_bb()
         ichimoku_performance = self.optimize_ichimoku()

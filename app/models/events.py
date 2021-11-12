@@ -11,6 +11,10 @@ TABLE_NAME_SIGNAL_EVENTS = 'signal_events'
 
 
 class SignalEvent(object):
+    '''
+    Event signal
+    'BUY' or 'SELL'
+    '''
     def __init__(self, time:datetime.datetime, product_code, side, price, size):
         if not type(time) == datetime.datetime:
             raise TypeError('Type of SignalEvent attribute "time" must be <class \'datetime.datetime\'>')
@@ -112,7 +116,7 @@ class SignalEvents(object):
 
 def get_signal_events_by_count(load_events):
     '''
-    Return the latest signal events
+    Returns the latest signal events
     '''
     conn = sqlite3.connect(config.Config.db_name, detect_types=sqlite3.PARSE_DECLTYPES)
     conn.row_factory = sqlite3.Row
@@ -152,7 +156,7 @@ def get_signal_events_by_count(load_events):
 
 def get_signal_events_after_time(time):
     '''
-    Return the signal events created after given time
+    Returns the signal events after given time
     '''
     conn = sqlite3.connect(config.Config.db_name, detect_types=sqlite3.PARSE_DECLTYPES)
     conn.row_factory = sqlite3.Row

@@ -11,7 +11,6 @@ from utils import mathlib
 
 logger = logging.getLogger(__name__)
 ''' Logger Config '''
-logger.setLevel(logging.DEBUG)
 handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
 
 stream_handler = logging.StreamHandler()
@@ -24,6 +23,9 @@ logger.addHandler(stream_handler)
 API_FEE_PERCENT = 0.0012
 
 class AI(object):
+    '''
+    自動売買システム
+    '''
     def __init__(self, product_code, use_percent, duration, past_period, stop_limit_percent, back_test):
         self.api = bitflyer.APIClient(config.Config.api_key, config.Config.api_secret)
         self.product_code = product_code
@@ -43,12 +45,13 @@ class AI(object):
         self.stop_limit = 0.0
         self.stop_limit_percent = stop_limit_percent
 
+        self.optimize_params = None
         self.update_optimize_params(False)
     
     def update_optimize_params(self, is_continue):
         df = candle.get_all_candles(self.product_code, self.duration, self.past_period)
         self.optimize_params = df.optimize_params() if df else None
-        if not self.optimize_params and is_continue and not self.back_test:
+        if self.optimize_params is None and is_continue and not self.back_test:
             time.sleep(10*config.Config.durations[self.duration])
             self.update_optimize_params(is_continue)
     
@@ -122,7 +125,7 @@ class AI(object):
         if not self.trade_semaphore.acquire(blocking=False):
             return
         params = self.optimize_params
-        if not params:
+        if params is None:
             logger.error('optimized params not found!')
             return
         logger.debug({

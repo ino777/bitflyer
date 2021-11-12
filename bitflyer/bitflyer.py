@@ -12,7 +12,7 @@ import websocket
 import urllib.parse
 import threading
 import queue
-
+from dataclasses import dataclass
 
 import requests
 import datetime_truncate
@@ -24,7 +24,6 @@ from config import config
 logger = logging.getLogger(__name__)
 
 ''' Logger Config '''
-logger.setLevel(logging.DEBUG)
 handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
 
 stream_handler = logging.StreamHandler()
@@ -42,39 +41,53 @@ logger.addHandler(file_handler)
 BASE_URL = 'https://api.bitflyer.com/v1/'
 
 
-
+@dataclass
 class Balance(object):
     '''
     Asset balance (資産残高)
+
+    https://lightning.bitflyer.com/docs#%E8%B3%87%E7%94%A3%E6%AE%8B%E9%AB%98%E3%82%92%E5%8F%96%E5%BE%97
     '''
-    def __init__(self, currency_code, amount, available):
-        self.currency_code = currency_code
-        self.amount = amount
-        self.available = available
+    currency_code: str
+    amount: int
+    available: int
 
-
+@dataclass
 class Ticker(object):
-    def __init__(
-            self, product_code, timestamp, tick_id, best_bid, best_ask, best_bid_size, best_ask_size,
-            total_bid_depth, total_ask_depth, ltp, volume, volume_by_product):
-        # Cast the types because received data is json parsed
-        self.product_code = str(product_code)
-        self.timestamp = str(timestamp)
-        self.tick_id = int(tick_id)
-        self.best_bid = float(best_bid)
-        self.best_ask = float(best_ask)
-        self.best_bid_size = float(best_bid_size)
-        self.best_ask_size = float(best_ask_size)
-        self.total_bid_depth = float(total_bid_depth)
-        self.total_ask_depth = float(total_ask_depth)
-        self.ltp = float(ltp)
-        self.volume = float(volume)
-        self.volume_by_product = float(volume_by_product)
+    '''
+    Ticker
+
+    https://lightning.bitflyer.com/docs#ticker
+    '''
+    product_code: str
+    state: str
+    timestamp: str
+    tick_id: int
+
+    # 買値, 売値
+    best_bid: float
+    best_ask: float
+    best_bid_size: float
+    best_ask_size: float
+    total_bid_depth: float
+    total_ask_depth: float
+    market_bid_size: float
+    market_ask_size: float
+
+    # 最終取引価格
+    ltp: float
+
+    # 24時間の取引量
+    volume: float
+    volume_by_product: float
 
     def get_mid_price(self):
         return (self.best_bid + self.best_ask) / 2
 
     def datetime(self):
+        '''
+        Get datetime from timestamp of ticker
+        '''
         # timestamp validation
         # timestamp format %Y-%m-%dT%H:%M:%S.%f%z 
         m = re.match(
@@ -103,7 +116,10 @@ class Ticker(object):
 
     def truncate_datetime(self, duration):
         '''
-        duration: str (1s, 1m, 1h, 1d, 1w)
+        Tcuncate datetime
+
+        duration: str
+            (1s, 1m, 1h, 1d, 1w)
         '''
         if duration == '1s':
             dt = self.datetime().replace(microsecond=0)
@@ -118,50 +134,65 @@ class Ticker(object):
         return dt
 
 
+@dataclass
 class Order(object):
-    def __init__(self, product_code, child_order_type, side, size, price=0, minute_to_expire=0, time_in_force='GTC'):
-        self.product_code = product_code
-        self.child_order_type = child_order_type
-        self.side = side
-        self.size = size
-        if self.child_order_type == 'LIMIT':
-            self.price = price
-        if minute_to_expire:
-            self.minute_to_expire = minute_to_expire
-        self.time_in_force = time_in_force
+    '''
+    新規注文を出す
+
+    https://lightning.bitflyer.com/docs#%E6%96%B0%E8%A6%8F%E6%B3%A8%E6%96%87%E3%82%92%E5%87%BA%E3%81%99
+    '''
+    # Produce code
+    product_code: str
+
+    # 指値注文の場合は'LIMIT', 成行注文の場合は'MARKET'
+    child_order_type: str
+    # 買い注文の場合は'BUY', 売り注文の場合は'SELL'
+    side: str
+    # 注文数量
+    size: float
+    # 価格, child_order_typeに'LIMI'を指定した場合は必須
+    price: float = 0
+    # 期限切れまでの時間を分で指定
+    minute_to_expire: float = 0
+    #  執行数量条件 を "GTC", "IOC", "FOK" のいずれかで指定
+    time_in_force: str = 'GTC'
 
 
-
+@dataclass
 class ResponseSendChildOrder(object):
-    def __init__(self, child_order_acceptance_id):
-        self.child_order_acceptance_id = child_order_acceptance_id
+    '''
+    新規注文(Order)のレスポンス
+    '''
+    child_order_acceptance_id: str
 
 
+@dataclass
 class ResponseGetChildOrder(object):
-    def __init__(self, id, child_order_id, product_code, child_order_type, side, size,
-            child_order_state, expire_date, child_order_date, child_order_acceptance_id,
-            outstanding_size, cancel_size, executed_size, total_commission, price=0, avarege_price=0):
-        self.id = id
-        self.child_order_id = child_order_id
-        self.product_code = product_code
-        self.child_order_type = child_order_type
-        self.side = side
-        self.size = size
-        self.child_order_state = child_order_state
-        self.expire_date = expire_date
-        self.child_order_date = child_order_date
-        self.child_order_acceptance_id = child_order_acceptance_id
-        self.outstanding_size = outstanding_size
-        self.cancel_size = cancel_size
-        self.executed_size = executed_size
-        self.total_commission = total_commission
-        if price:
-            self.price = price
-        if avarege_price:
-            self.avarage_price = avarege_price
+    '''
+    注文の一覧取得のレスポンス
+    '''
+    id: int
+    child_order_id: str
+    product_code: str
+    child_order_type: str
+    side: str
+    size: float
+    child_order_state: str
+    expire_date: str
+    child_order_date: str
+    child_order_acceptance_id: str
+    outstanding_size: float
+    cancel_size: float
+    executed_size: float
+    total_commission: float
+    price: float = 0
+    avarage_price: float = 0
 
 
 class APIClient(object):
+    '''
+    APIClient
+    '''
     def __init__(self, key, secret):
         self.key = str(key)
         self.secret = str(secret)
@@ -170,11 +201,14 @@ class APIClient(object):
         '''
         Create header
 
+        https://lightning.bitflyer.com/docs#%E8%AA%8D%E8%A8%BC
+
         method: method(GET, POST...)
         endpoint: url
-        body: byte data
+        body: request body
         '''
         timestamp = time.time()
+        # ACCESS-SIGNは, ACCESS-TIMESTAMP, HTTP メソッド, リクエストのパス, リクエストボディ を文字列として連結したものを、 API secret で HMAC-SHA256 署名
         message = str(timestamp) + method + endpoint + str(body)
         sign = hmac.new(self.secret.encode('utf-8'), message.encode('utf-8'), hashlib.sha256).hexdigest()
         return {
@@ -195,7 +229,7 @@ class APIClient(object):
         if len(urllib.parse.urlparse(apiurl).path) == 0:
             return
         endpoint = urllib.parse.urljoin(baseurl, apiurl)
-        logger.info({
+        logger.debug({
             'action': 'do_request',
             'endpoint': endpoint,
         })
@@ -226,7 +260,7 @@ class APIClient(object):
             logger.warning({
                 'action': 'APIClient:get_balance',
                 'error': err,
-                'response': r.json()
+                'response': results
             })
             return
         return balances
@@ -235,7 +269,7 @@ class APIClient(object):
         url = 'ticker'
         query = {'product_code': product_code}
         r = self.do_request('GET', url, query=query)
-        logger.info({
+        logger.debug({
             'action': 'ticker',
             'response': r.json()
         })
@@ -252,6 +286,11 @@ class APIClient(object):
         return ticker
 
     def get_realtime_ticker(self, product_code, ticker_q:queue.Queue):
+        '''
+        Returns realtime ticker over WebSocket
+
+        https://bf-lightning-api.readme.io/docs/realtime-ticker
+        '''
         endpoint = 'wss://ws.lightstream.bitflyer.com/json-rpc'
 
         param = json.dumps({
@@ -265,7 +304,7 @@ class APIClient(object):
         t = threading.Thread(target=c.start)
         t.setDaemon(True)
         t.start()
-        logger.info({
+        logger.debug({
             'action': 'get_realtime_ticker',
             'status': 'websocket starts in another thread'
         })
@@ -276,15 +315,19 @@ class APIClient(object):
             except TypeError as err:
                 logger.warning({
                     'action': 'APIClient:get_realtime_ticker',
+                    'content': resp_q.get(),
                     'error': err
                 })
                 return
     
     def send_order(self, order:Order):
+        '''
+        Send Order
+        '''
         url = 'me/sendchildorder'
         data = json.dumps(order.__dict__).encode('utf-8')
         r = self.do_request('POST', url, query={}, data=data)
-        logger.info({
+        logger.debug({
             'action': 'send_order',
             'resp': r.json(),
             'status': 'done'
@@ -302,9 +345,12 @@ class APIClient(object):
         return resp_child_order
 
     def list_order(self, query):
+        '''
+        Returns order list
+        '''
         url = 'me/getchildorders'
         r = self.do_request('GET', url, query=query)
-        logger.info({
+        logger.debug({
             'action': 'list_orders',
             'resp': r.json()
         })
@@ -322,7 +368,9 @@ class APIClient(object):
 
 
 class RealTimeAPI(object):
-    ''' websocket '''
+    '''
+    Websocket API
+    '''
     def __init__(self, url, param, queue):
         self.param = param
         self.queue = queue

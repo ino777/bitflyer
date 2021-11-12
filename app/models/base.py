@@ -7,7 +7,6 @@ from config import config
 
 logger = logging.getLogger(__name__)
 ''' Logger Config '''
-logger.setLevel(logging.DEBUG)
 handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
 
 stream_handler = logging.StreamHandler()

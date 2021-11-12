@@ -1,3 +1,6 @@
+'''
+買い, 売りを判断するトレードクラス
+'''
 
 class TradeEma(object):
     def __init__(self, value1, value2, period1, period2):

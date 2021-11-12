@@ -13,7 +13,6 @@ from app.controllers import ai
 
 logger = logging.getLogger(__name__)
 ''' Logger Config '''
-logger.setLevel(logging.DEBUG)
 handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
 
 stream_handler = logging.StreamHandler()
@@ -57,7 +56,7 @@ def view_candle():
     try:
         limit = int(str_limit)
     except ValueError as e:
-        return jsonify({'message': str(e), 'code': 400}), 400
+        return jsonify({'message': e, 'code': 400}), 400
     if limit < 0 or limit > MAX_LIMIT:
         limit = MAX_LIMIT
     
@@ -69,7 +68,9 @@ def view_candle():
 
 @app.route('/api/candle', methods=['GET'])
 def api_get_candle():
-    # Get DataFrameCandle
+    '''
+    Returns dataframe candles
+    '''
     product_code = request.args.get('product_code', config.Config.product_code)
     duration = request.args.get('duration', config.Config.trade_duration)
     

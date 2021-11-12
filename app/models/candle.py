@@ -11,7 +11,6 @@ from bitflyer import bitflyer
 
 logger = logging.getLogger(__name__)
 ''' Logger Config '''
-logger.setLevel(logging.DEBUG)
 handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
 
 stream_handler = logging.StreamHandler()
@@ -29,10 +28,15 @@ class Candle(object):
         self.duration = duration
         self.table = self.table_name()
         self.time = time
+        # 始値
         self.open = open_v
+        # 終値
         self.close = close
+        # 高値
         self.high = high
+        # 安値
         self.low = low
+        # 取引量
         self.volume = volume
 
     def table_name(self):
@@ -63,7 +67,7 @@ class Candle(object):
         
         curs.execute(
             '''
-            insert into {} (time, open, close, high, low, volume) values (?, ?, ?, ?, ?, ?);
+            insert or replace into {} (time, open, close, high, low, volume) values (?, ?, ?, ?, ?, ?);
             '''.format(self.table),
             (self.time.replace(tzinfo=None), self.open, self.close, self.high, self.low, self.volume)
         )
@@ -93,7 +97,7 @@ class Candle(object):
 
 def get_candle(product_code, duration, date_time:datetime.datetime):
     """
-    Return the candle whose time is date_time from the db table given by product_code and duration
+    Returns the candle whose time is date_time from the db table given by product_code and duration
     """
     if not type(date_time) == datetime.datetime:
         raise TypeError('Type of "date_time" must be <class \'datetime.datetime\'>')
@@ -110,7 +114,7 @@ def get_candle(product_code, duration, date_time:datetime.datetime):
     )
     row = curs.fetchone()
     if not row:
-        return False
+        return
 
     curs.close()
     conn.close()
@@ -132,7 +136,7 @@ def create_or_update_candle(ticker:bitflyer.Ticker, product_code, duration):
     '''
     current_candle = get_candle(product_code, duration, ticker.truncate_datetime(duration))
     price = ticker.get_mid_price()
-    if not current_candle:
+    if current_candle is None:
         candle = Candle(
             product_code = product_code,
             duration = duration,
@@ -159,7 +163,7 @@ def create_or_update_candle(ticker:bitflyer.Ticker, product_code, duration):
 
 def get_all_candles(product_code, duration, limit):
     '''
-    Return the latest candles
+    Returns the latest candles
     '''
     df = dfcandle.DataFrameCandle(product_code, duration, [])
     table_name = base.get_candle_table_name(product_code, duration)
@@ -181,10 +185,7 @@ def get_all_candles(product_code, duration, limit):
     curs.close()
     conn.close()
 
-    if limit > len(rows):
-        limit = len(rows)
-
-    for i in range(limit):
+    for i in range(len(rows)):
         df.candles.append(
             Candle(
                 product_code = product_code,
