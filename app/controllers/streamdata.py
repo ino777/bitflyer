@@ -37,7 +37,7 @@ def stream_ingestion_data():
             for duration in config.Config.durations.keys():
                 is_created = candle.create_or_update_candle(ticker, config.Config.product_code, duration)
                 # candleが作成されたらtradeを実行
-                if is_created == True and duration == config.Config.trade_duration:
+                if is_created and duration == config.Config.trade_duration:
                     ai.TRADE_AI.trade()
         except KeyboardInterrupt as err:
             logger.error({

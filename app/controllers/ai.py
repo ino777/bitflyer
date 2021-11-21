@@ -191,55 +191,49 @@ class AI(object):
 
 
         '''
-        シミュレーション時は全てのcandleに対して売買の計算をする
-        本番時は最新のcandleに対してのみ売買の計算をする
+        最新のcandleに対してのみ売買の計算をする
         ''' 
-        cal_range = range(len(df.candles)) if self.back_test else [-1]
-        # Count buy/sell point
-        for i in cal_range:
-            buy_point, sell_point = 0, 0
-            if params.ema_enable:
-                if ema_trade_model.should_buy(i):
-                    buy_point += 1
-                if ema_trade_model.should_sell(i):
-                    sell_point += 1
-            
-            if params.bb_enable:
-                if bb_trade_model.should_buy(i, df.candles):
-                    buy_point += 1
-                if bb_trade_model.should_sell(i, df.candles):
-                    sell_point += 1
-            
-            if params.ichimoku_enable:
-                if ichimoku_trade_model.should_buy(i, df.candles):
-                    buy_point += 1
-                if ichimoku_trade_model.should_sell(i, df.candles):
-                    sell_point += 1
-            
-            if params.macd_enable:
-                if macd_trade_model.should_buy(i):
-                    buy_point += 1
-                if macd_trade_model.should_sell(i):
-                    sell_point += 1
-            
-            if params.rsi_enable:
-                if rsi_trade_model.should_buy(i):
-                    buy_point += 1
-                if rsi_trade_model.should_sell(i):
-                    sell_point += 1
-            
-            # buy_pointが0より大きいなら買い
-            if buy_point > 0:
-                _, is_order_completed = self.buy(df.candles[i])
-                if not is_order_completed:
-                    continue
-                self.stop_limit = df.candles[i].close * self.stop_limit_percent
-            
-            # sell_pointが0より大きい、または終値がstop limitを下回りそうなら売り
-            if sell_point > 0 or df.candles[i].close < self.stop_limit:
-                _, is_order_completed = self.sell(df.candles[i])
-                if not is_order_completed:
-                    continue
+        buy_point, sell_point = 0, 0
+        if params.ema_enable:
+            if ema_trade_model.should_buy(-1):
+                buy_point += 1
+            if ema_trade_model.should_sell(-1):
+                sell_point += 1
+        
+        if params.bb_enable:
+            if bb_trade_model.should_buy(-1, df.candles):
+                buy_point += 1
+            if bb_trade_model.should_sell(-1, df.candles):
+                sell_point += 1
+        
+        if params.ichimoku_enable:
+            if ichimoku_trade_model.should_buy(-1, df.candles):
+                buy_point += 1
+            if ichimoku_trade_model.should_sell(-1, df.candles):
+                sell_point += 1
+        
+        if params.macd_enable:
+            if macd_trade_model.should_buy(-1):
+                buy_point += 1
+            if macd_trade_model.should_sell(-1):
+                sell_point += 1
+        
+        if params.rsi_enable:
+            if rsi_trade_model.should_buy(-1):
+                buy_point += 1
+            if rsi_trade_model.should_sell(-1):
+                sell_point += 1
+        
+        # buy_pointが0より大きいなら買い
+        if buy_point > 0:
+            _, is_order_completed = self.buy(df.candles[-1])
+            if is_order_completed:
+                self.stop_limit = df.candles[-1].close * self.stop_limit_percent
+        
+        # sell_pointが0より大きい、または終値がstop limitを下回りそうなら売り
+        if sell_point > 0 or df.candles[-1].close < self.stop_limit:
+            _, is_order_completed = self.sell(df.candles[-1])
+            if is_order_completed:
                 self.stop_limit = 0.0
                 self.update_optimize_params(True)
 

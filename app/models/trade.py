@@ -64,6 +64,8 @@ class TradeIchimoku(object):
     def should_buy(self, index, candles):
         if index < 52:
             return False
+        if index >= len(self.delay):
+            return False
         if self.tenkan[index] is None or self.base[index] is None or self.pre1[index] is None or self.pre2[index] is None or self.delay[index-1] is None:
             return False
         if (self.delay[index-1] < candles[index-1].high
@@ -76,6 +78,8 @@ class TradeIchimoku(object):
     
     def should_sell(self, index, candles):
         if index < 52:
+            return False
+        if index >= len(self.delay):
             return False
         if self.tenkan[index] is None or self.base[index] is None or self.pre1[index] is None or self.pre2[index] is None or self.delay[index-1] is None:
             return False
