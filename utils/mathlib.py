@@ -127,7 +127,7 @@ def rsi(period, values):
                 up_sum += diff
             else:
                 down_sum += abs(diff)
-        result[i] = (up_sum / (up_sum + down_sum) ) * 100
+        result[i] = (up_sum / (up_sum + down_sum + 10**-10) ) * 100   # avoid zero division
     return result
 
 def macd(short_period, long_period, signal_period, values):
