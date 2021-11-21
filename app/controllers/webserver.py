@@ -39,7 +39,9 @@ def str2int(strs, defaults):
     for i in range(len(strs)):
         try:
             result.append(int(strs[i]))
-        except ValueError as e:
+        except ValueError:
+            result.append(defaults[i])
+        except TypeError:
             result.append(defaults[i])
         result[i] = result[i] if result[i] >= 0 else defaults[i]
     return result
