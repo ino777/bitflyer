@@ -1,4 +1,3 @@
-import logging
 import threading
 import queue
 
@@ -6,17 +5,10 @@ from bitflyer import bitflyer
 from config import config
 from app.models import candle
 from app.controllers import ai
+from utils.logsettings import getLogger
 
 
-logger = logging.getLogger(__name__)
-''' Logger Config '''
-handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
-
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(config.Config.log_stream_level)
-stream_handler.setFormatter(handler_format)
-
-logger.addHandler(stream_handler)
+logger = getLogger(__name__)
 
 
 def stream_ingestion_data():
@@ -38,6 +30,10 @@ def stream_ingestion_data():
                 is_created = candle.create_or_update_candle(ticker, config.Config.product_code, duration)
                 # candleが作成されたらtradeを実行
                 if is_created and duration == config.Config.trade_duration:
+                    logger.debug({
+                        'action': 'stream_ingestion_data',
+                        'status': 'start ai trade'
+                    })
                     ai.TRADE_AI.trade()
         except KeyboardInterrupt as err:
             logger.error({

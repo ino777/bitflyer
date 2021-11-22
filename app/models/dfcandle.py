@@ -5,17 +5,11 @@ from typing import List
 
 from config import config
 from utils import mathlib
+from utils.logsettings import getLogger
 from . import candle, events, trade
 
-logger = logging.getLogger(__name__)
-''' Logger Config '''
-handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
 
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(config.Config.log_stream_level)
-stream_handler.setFormatter(handler_format)
-
-logger.addHandler(stream_handler)
+logger = getLogger(__name__)
 
 
 @dataclass

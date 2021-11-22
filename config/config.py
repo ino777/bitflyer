@@ -5,18 +5,10 @@ import configparser
 from dataclasses import dataclass
 
 
-logger = logging.getLogger(__name__)
+from utils.logsettings import getLogger
 
-''' Logger Config '''
-logger.setLevel(logging.DEBUG)
-handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
 
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.DEBUG)
-stream_handler.setFormatter(handler_format)
-
-logger.addHandler(stream_handler)
-
+logger = getLogger(__name__)
 
 
 @dataclass
@@ -26,9 +18,11 @@ class ConfigList(object):
     api_secret: str
 
     # Logger Settings
-    log_file: str
+    system_log_file: str
+    trade_log_file: str
     log_stream_level: int
-    log_file_level: int
+    system_log_file_level: int
+    trade_log_file_level: int
 
     # Product code (e.g. JPY)
     product_code: str
@@ -84,9 +78,11 @@ durations = {
 Config = ConfigList(
     api_key = cfg['bitflyer']['api_key'],
     api_secret = cfg['bitflyer']['api_secret'],
-    log_file = cfg['trading']['log_file'],
+    system_log_file = cfg['trading']['system_log_file'],
+    trade_log_file = cfg['trading']['trade_log_file'],
     log_stream_level = log_levels[cfg['trading']['log_stream_level']],
-    log_file_level = log_levels[cfg['trading']['log_file_level']],
+    system_log_file_level = log_levels[cfg['trading']['system_log_file_level']],
+    trade_log_file_level = log_levels[cfg['trading']['trade_log_file_level']],
     product_code = cfg['trading']['product_code'],
     timezone = cfg['trading']['timezone'],
     trade_duration = cfg['trading']['trade_duration'],

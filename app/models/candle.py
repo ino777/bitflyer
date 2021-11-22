@@ -7,17 +7,10 @@ import sqlite3
 from . import base, dfcandle
 from config import config
 from bitflyer import bitflyer
+from utils.logsettings import getLogger
 
 
-logger = logging.getLogger(__name__)
-''' Logger Config '''
-handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
-
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(config.Config.log_stream_level)
-stream_handler.setFormatter(handler_format)
-
-logger.addHandler(stream_handler)
+logger = getLogger(__name__)
 
 
 class Candle(object):
