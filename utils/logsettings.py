@@ -2,7 +2,7 @@ import logging
 
 from config import config
 
-def getLogger(name, stream_level=config.Config.log_stream_level, log_file=system_log_file, file_level=config.Config.system_log_file_level):
+def getLogger(name, stream_level=config.Config.log_stream_level, log_file=config.Config.system_log_file, file_level=config.Config.system_log_file_level):
     logger = logging.getLogger(name)
     ''' Logger Config '''
     handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')

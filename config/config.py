@@ -5,10 +5,7 @@ import configparser
 from dataclasses import dataclass
 
 
-from utils.logsettings import getLogger
-
-
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
