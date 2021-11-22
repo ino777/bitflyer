@@ -4,3 +4,4 @@
 stockdata.sql
 *.sql
 trading.log
+*.log
