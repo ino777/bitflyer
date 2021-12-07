@@ -54,9 +54,6 @@ class Candle(object):
         conn = sqlite3.connect(config.Config.db_name, detect_types=sqlite3.PARSE_DECLTYPES)
         curs = conn.cursor()
 
-        logger.debug({
-            'action': 'Candle:create',
-        })
         
         curs.execute(
             '''
@@ -72,9 +69,6 @@ class Candle(object):
         conn = sqlite3.connect(config.Config.db_name, detect_types=sqlite3.PARSE_DECLTYPES)
         curs = conn.cursor()
 
-        logger.debug({
-            'action': 'Candle:save',
-        })
 
         curs.execute(
             '''

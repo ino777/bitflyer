@@ -494,17 +494,15 @@ class DataFrameCandle(object):
         '''
         ema_performance, ema_period1, ema_period2 = self.optimize_ema()
         bb_performance, bb_n, bb_k = self.optimize_bb()
-        ichimoku_performance = self.optimize_ichimoku()
         macd_performance, macd_short_period, macd_long_period, macd_signal_period = self.optimize_macd()
         rsi_performance, rsi_period, rsi_buy_thread, rsi_sell_thread = self.optimize_rsi()
 
         ema_ranking = Ranking(ema_performance)
         bb_ranking = Ranking(bb_performance)
-        ichimoku_ranking = Ranking(ichimoku_performance)
         macd_ranking = Ranking(macd_performance)
         rsi_ranking = Ranking(rsi_performance)
 
-        rankings = Rankings([ema_ranking, bb_ranking, ichimoku_ranking, macd_ranking, rsi_ranking])
+        rankings = Rankings([ema_ranking, bb_ranking, macd_ranking, rsi_ranking])
         rankings.sort_by_performance()
         
         is_enable = False
@@ -526,7 +524,7 @@ class DataFrameCandle(object):
             bb_enable = bb_ranking.enable,
             bb_n = bb_n,
             bb_k = bb_k,
-            ichimoku_enable = ichimoku_ranking.enable,
+            ichimoku_enable = False,
             macd_enable = macd_ranking.enable,
             macd_short_period = macd_short_period,
             macd_long_period = macd_long_period,

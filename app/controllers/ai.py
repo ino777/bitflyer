@@ -7,20 +7,14 @@ from bitflyer import bitflyer
 from config import config
 from app.models import events, candle, dfcandle, trade
 from utils import mathlib
+from utils.logsettings import getLogger
 
+logger = getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-''' Logger Config '''
-handler_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s')
-
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(config.Config.log_stream_level)
-stream_handler.setFormatter(handler_format)
-
-logger.addHandler(stream_handler)
-
+trade_logger = getLogger(__name__ + "trade", log_file=config.Config.trade_log_file, file_level=config.Config.trade_log_file_level)
 
 API_FEE_PERCENT = 0.0012
+BACKTEST_TRADE_SIZE = 1.0
 
 class AI(object):
     '''
@@ -55,6 +49,8 @@ class AI(object):
 
         # Start trade time
         self.start_trade = datetime.datetime.now()
+        # Last trade time
+        self.last_trade = datetime.datetime.min
         # Stop limit
         self.stop_limit = 0.0
         self.stop_limit_percent = stop_limit_percent
@@ -63,17 +59,18 @@ class AI(object):
         self.optimize_params = None
 
 
-        self.update_optimize_params(False)
+        self.update_optimize_params()
     
-    def update_optimize_params(self, is_continue):
+    def update_optimize_params(self):
         '''
         Update optimized trade parameters
         '''
         df = candle.get_all_candles(self.product_code, self.duration, self.past_period)
         self.optimize_params = df.optimize_params() if df else None
-        if self.optimize_params is None and is_continue and not self.back_test:
-            time.sleep(10*config.Config.durations[self.duration])
-            self.update_optimize_params(is_continue)
+        logger.debug({
+            'action': 'AI:update_optimize_params',
+            'params': self.optimize_params
+        })
     
     def buy(self, candle:candle.Candle):
         '''
@@ -81,7 +78,21 @@ class AI(object):
         '''
         # Simulation
         if self.back_test:
-            could_buy = self.signal_events.buy(self.product_code, candle.time, candle.close, 1.0, False)
+            trade_logger.debug({
+                'status': 'try to order',
+                'side': 'BUY',
+                'price': candle.close,
+                'size': BACKTEST_TRADE_SIZE,
+                'back_test': True,
+            })
+
+            could_buy = self.signal_events.buy(self.product_code, candle.time, candle.close, BACKTEST_TRADE_SIZE, False)
+
+            trade_logger.debug({
+                'status': 'finish order',
+                'side': 'BUY',
+                'is_order_completed': could_buy
+            })
             return '', could_buy
         
         # 以下, 実際に購入する手続き
@@ -104,6 +115,14 @@ class AI(object):
             minute_to_expire = self.minute_to_expires,
             time_in_force = 'GTC'
         )
+
+        trade_logger.debug({
+            'status': 'try to order',
+            'side': 'BUY',
+            'size': size,
+            'back_test': False
+        })
+
         resp = self.api.send_order(order)
         acceptance_id = resp.child_order_acceptance_id
         if not acceptance_id:
@@ -113,6 +132,12 @@ class AI(object):
             })
         
         is_order_completed = self.wait_until_order_complete(acceptance_id, candle.time)
+
+        trade_logger.debug({
+            'status': 'finish order',
+            'side': 'BUY',
+            'is_order_completed': is_order_completed
+        })
         return acceptance_id, is_order_completed
     
     def sell(self, candle:candle.Candle):
@@ -121,7 +146,21 @@ class AI(object):
         '''
         # Simulation
         if self.back_test:
-            could_sell = self.signal_events.sell(self.product_code, candle.time, candle.close, 1.0, False)
+            trade_logger.debug({
+                'status': 'try to order',
+                'side': 'SELL',
+                'price': candle.close,
+                'size': BACKTEST_TRADE_SIZE,
+                'back_test': True,
+            })
+
+            could_sell = self.signal_events.sell(self.product_code, candle.time, candle.close, BACKTEST_TRADE_SIZE, False)
+
+            trade_logger.debug({
+                'status': 'finish order',
+                'side': 'SELL',
+                'is_order_completed': could_sell
+            })
             return '', could_sell
         
         # 以下, 実際の売却する手続き
@@ -140,6 +179,13 @@ class AI(object):
             minute_to_expire = self.minute_to_expires,
             time_in_force = 'GTC'
         )
+
+        trade_logger.debug({
+            'status': 'try to order',
+            'side': 'SELL',
+            'size': size,
+            'back_test': False
+        })
         resp = self.api.send_order(order)
         acceptance_id = resp.child_order_acceptance_id
         if not acceptance_id:
@@ -149,16 +195,29 @@ class AI(object):
             })
         
         is_order_completed = self.wait_until_order_complete(acceptance_id, candle.time)
+
+        trade_logger.debug({
+            'status': 'finish order',
+            'side': 'SELL',
+            'is_order_completed': is_order_completed
+        })
         return acceptance_id, is_order_completed
     
     def trade(self):
         # セマフォ取得
         if not self.trade_semaphore.acquire(blocking=False):
+            logger.warning({
+                'action': 'AI:trade',
+                'status': 'cannot acquire semaphore'
+            })
             return
 
+        self.update_optimize_params()
         params = self.optimize_params
         if params is None:
-            logger.error('optimized params not found!')
+            logger.info('optimized params not found!')
+            # セマフォ解放
+            self.trade_semaphore.release()
             return
         logger.debug({
             'action': 'AI:trade',
@@ -191,51 +250,74 @@ class AI(object):
 
 
         '''
-        最新のcandleに対してのみ売買の計算をする
-        ''' 
-        buy_point, sell_point = 0, 0
-        if params.ema_enable:
-            if ema_trade_model.should_buy(-1):
-                buy_point += 1
-            if ema_trade_model.should_sell(-1):
-                sell_point += 1
-        
-        if params.bb_enable:
-            if bb_trade_model.should_buy(-1, df.candles):
-                buy_point += 1
-            if bb_trade_model.should_sell(-1, df.candles):
-                sell_point += 1
-        
-        if params.ichimoku_enable:
-            if ichimoku_trade_model.should_buy(-1, df.candles):
-                buy_point += 1
-            if ichimoku_trade_model.should_sell(-1, df.candles):
-                sell_point += 1
-        
-        if params.macd_enable:
-            if macd_trade_model.should_buy(-1):
-                buy_point += 1
-            if macd_trade_model.should_sell(-1):
-                sell_point += 1
-        
-        if params.rsi_enable:
-            if rsi_trade_model.should_buy(-1):
-                buy_point += 1
-            if rsi_trade_model.should_sell(-1):
-                sell_point += 1
-        
-        # buy_pointが0より大きいなら買い
-        if buy_point > 0:
-            _, is_order_completed = self.buy(df.candles[-1])
-            if is_order_completed:
-                self.stop_limit = df.candles[-1].close * self.stop_limit_percent
-        
-        # sell_pointが0より大きい、または終値がstop limitを下回りそうなら売り
-        if sell_point > 0 or df.candles[-1].close < self.stop_limit:
-            _, is_order_completed = self.sell(df.candles[-1])
-            if is_order_completed:
-                self.stop_limit = 0.0
-                self.update_optimize_params(True)
+        各candleに対して売買の計算をする
+        '''
+        for i in range(len(df.candles)):
+            if self.last_trade >= df.candles[i].time:
+                continue
+
+            buy_params, sell_params = {}, {}
+            if params.ema_enable:
+                ema_params = {'period1': ema_trade_model.period1, 'period2': ema_trade_model.period2}
+                if ema_trade_model.should_buy(i):
+                    buy_params['ema'] = ema_params
+                if ema_trade_model.should_sell(i):
+                    sell_params['ema'] = ema_params
+            
+            if params.bb_enable:
+                bb_params = {'n': bb_trade_model.n, 'k': bb_trade_model.k}
+                if bb_trade_model.should_buy(i, df.candles):
+                    buy_params['bbands'] = bb_params
+                if bb_trade_model.should_sell(i, df.candles):
+                    sell_params['bbands'] = bb_params
+            
+            if params.macd_enable:
+                macd_params = {'short_period1': macd_trade_model.short_period, 'long_period': macd_trade_model.long_period, 'signal_period': macd_trade_model.signal_period}
+                if macd_trade_model.should_buy(i):
+                    buy_params['macd'] = macd_params
+                if macd_trade_model.should_sell(i):
+                    sell_params['macd'] = macd_params
+            
+            if params.rsi_enable:
+                rsi_params = {'period': rsi_trade_model.preiod}
+                if rsi_trade_model.should_buy(i):
+                    buy_params['rsi'] = rsi_params
+                if rsi_trade_model.should_sell(i):
+                    sell_params['rsi'] = rsi_params
+            
+            buy_point = len(buy_params.keys())
+            sell_point = len(sell_params.keys())
+
+            # buy_pointが0より大きいなら買い
+            if buy_point > 0:
+                _, is_order_completed = self.buy(df.candles[i])
+                if is_order_completed:
+                    self.stop_limit = df.candles[i].close * self.stop_limit_percent
+
+                    trade_logger.info({
+                        'status': 'order completed',
+                        'side': 'BUY',
+                        'params': buy_params,
+                        'stop_limit': self.stop_limit
+                    })
+
+                    self.last_trade = df.candles[i].time
+            
+            # sell_pointが0より大きい、または終値がstop limitを下回りそうなら売り
+            loss_cut = df.candles[i].close < self.stop_limit
+            if sell_point > 0 or loss_cut:
+                _, is_order_completed = self.sell(df.candles[i])
+                if is_order_completed:
+                    self.stop_limit = 0.0
+
+                    trade_logger.info({
+                        'status': 'order completed',
+                        'side': 'SELL',
+                        'params': sell_params,
+                        'loss_cut': loss_cut
+                    })
+
+                    self.last_trade = df.candles[i].time
 
         # セマフォ解放  
         self.trade_semaphore.release()
