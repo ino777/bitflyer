@@ -49,8 +49,8 @@ class AI(object):
 
         # Start trade time
         self.start_trade = datetime.datetime.now()
-        # Last trade time
-        self.last_trade = datetime.datetime.min
+        # Last calculate candle time
+        self.last_time = datetime.datetime.min
         # Stop limit
         self.stop_limit = 0.0
         self.stop_limit_percent = stop_limit_percent
@@ -212,10 +212,11 @@ class AI(object):
             })
             return
 
-        self.update_optimize_params()
         params = self.optimize_params
         if params is None:
             logger.info('optimized params not found!')
+
+            self.update_optimize_params()
             # セマフォ解放
             self.trade_semaphore.release()
             return
@@ -253,7 +254,7 @@ class AI(object):
         各candleに対して売買の計算をする
         '''
         for i in range(len(df.candles)):
-            if self.last_trade >= df.candles[i].time:
+            if self.last_time >= df.candles[i].time:
                 continue
 
             buy_params, sell_params = {}, {}
@@ -301,7 +302,6 @@ class AI(object):
                         'stop_limit': self.stop_limit
                     })
 
-                    self.last_trade = df.candles[i].time
             
             # sell_pointが0より大きい、または終値がstop limitを下回りそうなら売り
             loss_cut = df.candles[i].close < self.stop_limit
@@ -317,7 +317,7 @@ class AI(object):
                         'loss_cut': loss_cut
                     })
 
-                    self.last_trade = df.candles[i].time
+        self.last_time = df.candles[-1].time
 
         # セマフォ解放  
         self.trade_semaphore.release()
