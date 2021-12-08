@@ -59,6 +59,10 @@ def bbands(n, k, values):
     sigma = [None for _ in range(length)]
     up = [None for _ in range(length)]
     down = [None for _ in range(length)]
+
+    if n <= 1:
+        return up, mid, down
+
     for i in range(length):
         if i < n - 1:
             continue

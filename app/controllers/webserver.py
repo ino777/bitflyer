@@ -39,7 +39,7 @@ def str2int(strs, defaults):
             result.append(defaults[i])
         except TypeError:
             result.append(defaults[i])
-        result[i] = result[i] if result[i] >= 0 else defaults[i]
+        result[i] = result[i] if result[i] > 0 else defaults[i]
     return result
 
 
@@ -54,7 +54,7 @@ def view_candle():
     try:
         limit = int(str_limit)
     except ValueError as e:
-        return jsonify({'message': e, 'code': 400}), 400
+        limit = MAX_LIMIT
     if limit < 0 or limit > MAX_LIMIT:
         limit = MAX_LIMIT
     
@@ -76,7 +76,7 @@ def api_get_candle():
     try:
         limit = int(str_limit)
     except ValueError as e:
-        return jsonify({'message': str(e), 'code': 400}), 400
+        limit = MAX_LIMIT
     if limit < 0 or limit > MAX_LIMIT:
         limit = MAX_LIMIT
     

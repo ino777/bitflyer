@@ -1,5 +1,4 @@
 import datetime
-from pytz import timezone
 import sqlite3
 import json
 

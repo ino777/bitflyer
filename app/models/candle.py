@@ -1,6 +1,5 @@
 import logging
 import datetime
-from pytz import timezone
 import sqlite3
 
 
