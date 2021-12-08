@@ -8,637 +8,146 @@
         [id^="google-visualization-errors"] {
             display: none;
         }
-        
+
         .chart {
             padding-bottom: 20px;
         }
-
     </style>
+    <!-- Jquery -->
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <!-- Google Chart Tools -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 
-    <script type="text/javascript">
-        google.charts.load("current", { "packages": ["corechart", "controls"] });
+    <!-- UIkit CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.9.4/dist/css/uikit.min.css" />
 
-        // Config
-        let config = {
-            productCode: "BTC_JPY",
-            limit: 100,
-            duration: "1m",
-            api: {
-                enable: true,
-                interval: 3000,
-            },
-            events: {
-                enable: false
-            },
-            analysis: {
-                ema: {
-                    enable: false,
-                    period1: 7,
-                    period2: 14,
-                    period3: 50,
-                },
-                bbands: {
-                    enable: false,
-                    n: 20,
-                    k: 2,
-                },
-                rsi: {
-                    enable: false,
-                    period: 14,
-                    overbought: 70,
-                    oversold: 30,
-                },
-                macd: {
-                    enable: false,
-                    shortPeriod: 12,
-                    longPeriod: 26,
-                    signalPeriod: 9
-                }
-            }
+    <!-- UIkit JS -->
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.9.4/dist/js/uikit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.9.4/dist/js/uikit-icons.min.js"></script>
 
-        }
 
-        let dataIndicies = {
-            numView: 5,
-            eventsIndicies: [],
-            analysis: {
-                emaIndicies: [],
-                bbandsIndicies: [],
-                rsiIndicies: [],
-                macdIndicies: [],
-            }
-        }
-
-        // ローソク足のデータ
-        let candleDataTable;
-
-
-        // DateTimeFormat
-        function dateTimeFormatByDuration(duration) {
-            switch (duration) {
-                case '1s': return 'm:ss';
-                case '1m': return 'H:mm';
-                case '1h': return 'd H';
-                case '1d': return 'M d';
-            }
-        }
-
-        // durationを変更する
-        function changeDuration(duration) {
-            config.duration = duration;
-            send();
-        }
-
-        // チャート図を描画
-        function drawVisualization(data) {
-            // ダッシュボードを作成
-            let dashboard = new google.visualization.Dashboard($("#dashboard_div")[0]);
-
-            // スライダーを作成
-            let rangeSlider = new google.visualization.ControlWrapper({
-                controlType: "ChartRangeFilter",
-                containerId: "filter_div",
-                options: {
-                    filterColumnLabel: "Date",
-                    ui: {
-                        chartType: "LineChart",
-                        chartOptions: {
-                            hAxis: {
-                                format: dateTimeFormatByDuration(config.duration),
-                            },
-                            height: 100
-                        },
-                        chartView: {
-                            columns: [0, 3] // [Date, Close]
-                        }
-                    }
-                },
-
-            });
-
-            // 各チャートをまとめて格納する
-            // 後にスライダーとまとめてbindするため
-            let charts = [];
-
-            // メインチャートを作成
-            let mainChart = new google.visualization.ChartWrapper({
-                chartType: "ComboChart",
-                containerId: "chart_div",
-                options: {
-                    title: "Chart",
-                    hAxis: {
-                        title: "Time",
-                        format: dateTimeFormatByDuration(config.duration),
-                    },
-                    legend: "none",
-                    height: 400,
-                    candlestick: {
-                        fallingColor: { strokeWidth: 1, fill: 'white' },
-                        risingColor: { strokeWidth: 1, fill: 'blue' }
-                    },
-                    seriesType: "candlesticks",
-                    series: {},
-
-                },
-                view: {
-                    columns: [0, 1, 2, 3, 4]    // [Date, Low, Open, Close, High]
-                }
-            });
-            charts.push(mainChart);
-
-            // メインチャートのoptionsとviewに各インジケータの情報を追加する
-            let mainOptions = mainChart.getOptions();
-            let mainView = mainChart.getView();
-
-
-            // EMA
-            if (config.analysis.ema.enable) {
-                for (let i = 0; i < dataIndicies.analysis.emaIndicies.length; i++) {
-                    const index = dataIndicies.analysis.emaIndicies[i];
-
-                    mainOptions.series[index] = {
-                        type: "line",
-                        lineWidth: 1,
-                    };
-                    mainView.columns.push(dataIndicies.numView + index);
-                }
-            }
-
-            // BBands
-            if (config.analysis.bbands.enable) {
-                for (let i = 0; i < dataIndicies.analysis.bbandsIndicies.length; i++) {
-                    const index = dataIndicies.analysis.bbandsIndicies[i];
-                    mainOptions.series[index] = {
-                        type: "line",
-                        color: "#6495ed",
-                        lineWidth: 1,
-                    };
-                    mainView.columns.push(dataIndicies.numView + index);
-                }
-            }
-            
-            // Signal events
-            if (config.events.enable) {
-                const index = dataIndicies.eventsIndicies[0]
-                mainOptions.series[index] = {
-                    type: "line",
-                    enableInteractivity: false,
-                    lineWidth: 0
-                }
-                mainView.columns.push(dataIndicies.numView + index);
-                mainView.columns.push(dataIndicies.numView + index + 1);
-
-            }
-
-            // RSI
-            if (config.analysis.rsi.enable) {
-                let valuesIndex = dataIndicies.numView + dataIndicies.analysis.rsiIndicies[0];
-                let overboughtIndex = dataIndicies.numView + dataIndicies.analysis.rsiIndicies[1];
-                let oversoldIndex = dataIndicies.numView + dataIndicies.analysis.rsiIndicies[2];
-                let rsiChart = new google.visualization.ChartWrapper({
-                    chartType: "LineChart",
-                    containerId: "rsi_div",
-                    options: {
-                        title: "RSI",
-                        hAxis: {
-                            format: dateTimeFormatByDuration(config.duration),
-                        },
-                        legend: "none",
-                        colors: ["gray", "gray", "red"]
-
-                    },
-                    view: {
-                        columns: [0, overboughtIndex, oversoldIndex, valuesIndex]
-                    }
-                });
-                charts.push(rsiChart);
-                $("#rsi_div").show();
-            } else {
-                $("#rsi_div").hide();
-            }
-
-
-            // MACD
-            if (config.analysis.macd.enable) {
-                let macdIndex = dataIndicies.numView + dataIndicies.analysis.macdIndicies[0];
-                let signalIndex = dataIndicies.numView + dataIndicies.analysis.macdIndicies[1];
-                let histogramIndex = dataIndicies.numView + dataIndicies.analysis.macdIndicies[2];
-                let macdChart = new google.visualization.ChartWrapper({
-                    chartType: "ComboChart",
-                    containerId: "macd_div",
-                    options: {
-                        title: "MACD",
-                        hAxis: {
-                            format: dateTimeFormatByDuration(config.duration),
-                        },
-                        legend: "none",
-                        seriesType: "line",
-                        series: {
-                            2: { type: "bars" }
-                        },
-
-                    },
-                    view: {
-                        columns: [0, macdIndex, signalIndex, histogramIndex]
-                    }
-                })
-                charts.push(macdChart);
-                $("#macd_div").show();
-            } else {
-                $("#macd_div").hide();
-            }
-
-
-
-
-            // ボリュームチャートを作成
-            let volumeChart = new google.visualization.ChartWrapper({
-                chartType: "ColumnChart",
-                containerId: "volume_div",
-                options: {
-                    title: "Volume",
-                    hAxis: {
-                        format: dateTimeFormatByDuration(config.duration)
-                    },
-                    legend: "none",
-
-                },
-                view: {
-                    columns: [0, 5] // [Date, Volume]
-                }
-
-            });
-            charts.push(volumeChart);
-
-            // エラーメッセージをコンソールログに出す
-            logErrorMessage(charts);
-
-            // 各チャートとスライダーをbind
-            dashboard.bind(rangeSlider, charts);
-            // データをダッシュボードに渡して描画
-            dashboard.draw(candleDataTable);
-        }
-
-
-        function logErrorMessage(charts){
-            for(let i=0; i < charts.length; i++){
-                google.visualization.events.addListener(charts[i], "error", function(error){
-                    console.error(error.message);
-                })
-            }
-        }
-
-        // Ajaxでcandleを取得するAPI通信を行う
-        // 成功時には結果をcandleDataTableに格納する
-        function send() {
-            if (!config.api.enable){
-                return
-            }
-            
-            let params = {
-                product_code: config.productCode,
-                limit: config.limit,
-                duration: config.duration,
-            }
-            if (config.events.enable) {
-                params["events"] = true;
-            }
-            if (config.analysis.ema.enable) {
-                params["ema"] = true;
-                params["ema_period1"] = config.analysis.ema.period1;
-                params["ema_period2"] = config.analysis.ema.period2;
-                params["ema_period3"] = config.analysis.ema.period3;
-            }
-            if (config.analysis.bbands.enable) {
-                params["bbands"] = true;
-                params["bbands_n"] = config.analysis.bbands.n;
-                params["bbands_k"] = config.analysis.bbands.k;
-            }
-            if (config.analysis.rsi.enable) {
-                params["rsi"] = true;
-                params["rsi_period"] = config.analysis.rsi.period;
-            }
-            if (config.analysis.macd.enable) {
-                params["macd"] = true;
-                params["macd_short_period"] = config.analysis.macd.shortPeriod;
-                params["macd_long_period"] = config.analysis.macd.longPeriod;
-                params["macd_signal_period"] = config.analysis.macd.signalPeriod;
-            }
-
-
-            $.ajax({
-                url: "/api/candle",
-                method: "GET",
-                data: params
-            })
-                .done((result) => {
-                    candleDataTable = new google.visualization.DataTable();
-
-                    // カラムの追加
-                    candleDataTable.addColumn("date", "Date");
-                    candleDataTable.addColumn("number", "Low");
-                    candleDataTable.addColumn("number", "Open");
-                    candleDataTable.addColumn("number", "Close");
-                    candleDataTable.addColumn("number", "High");
-                    candleDataTable.addColumn("number", "Volume");
-
-                    let columnIndex = 1;
-
-
-                    // EMA
-                    let emas = result.emas;
-                    let emas1 = [];
-                    let emas2 = [];
-                    let emas3 = [];
-                    if (emas != undefined) {
-                        emas1 = emas[0].values;
-                        emas2 = emas[1].values;
-                        emas3 = emas[2].values;
-                        let period1 = emas[0].period;
-                        let period2 = emas[1].period;
-                        let period3 = emas[2].period;
-                        candleDataTable.addColumn("number", "EMA" + period1.toString());
-                        candleDataTable.addColumn("number", "EMA" + period2.toString());
-                        candleDataTable.addColumn("number", "EMA" + period3.toString());
-                        dataIndicies.analysis.emaIndicies = [columnIndex, columnIndex + 1, columnIndex + 2];
-                        columnIndex += 3;
-                    }
-
-
-                    // BBands
-                    let bbands = result.bbands;
-                    let bbDown = [];
-                    let bbMid = [];
-                    let bbUp = [];
-                    if (bbands != undefined) {
-                        bbDown = bbands.down;
-                        bbMid = bbands.mid;
-                        bbUp = bbands.up;
-                        candleDataTable.addColumn("number", "BBands down");
-                        candleDataTable.addColumn("number", "BBands mid");
-                        candleDataTable.addColumn("number", "BBands up");
-                        dataIndicies.analysis.bbandsIndicies = [columnIndex, columnIndex + 1, columnIndex + 2];
-                        columnIndex += 3;
-                    }
-
-
-                    // Signal Events
-                    let events = result.events;
-                    let eventSignals = []
-                    if (events != undefined) {
-                        eventSignals = events.signals;
-                        // マーカーの位置
-                        candleDataTable.addColumn("number", "Marker");
-                        // sideを表すannotation
-                        candleDataTable.addColumn({ type: "string", role: "annotation" });
-                        dataIndicies.eventsIndicies = [columnIndex, columnIndex+1];
-                        columnIndex += 2;
-
-                        let profit = events.profit;
-                        $("#profit").html(profit);
-                    }
-
-                    // RSI
-                    let rsi = result.rsi;
-                    let rsiValues = [];
-                    if (rsi != undefined) {
-                        rsiValues = rsi.values;
-                        candleDataTable.addColumn("number", "RSI");
-                        candleDataTable.addColumn("number", "RSI overbought");
-                        candleDataTable.addColumn("number", "RSI oversold");
-                        dataIndicies.analysis.rsiIndicies = [columnIndex, columnIndex + 1, columnIndex + 2];
-                        columnIndex += 3;
-                    }
-
-
-                    // MACD
-                    let macd = result.macd;
-                    let macdValues = [];
-                    let macdSignal = [];
-                    let macdHistogram = [];
-                    if (macd != undefined) {
-                        macdValues = macd.macd;
-                        macdSignal = macd.signal;
-                        macdHistogram = macd.histogram;
-                        candleDataTable.addColumn("number", "MACD");
-                        candleDataTable.addColumn("number", "MACD Signal");
-                        candleDataTable.addColumn("number", "MACD Histogram");
-                        dataIndicies.analysis.macdIndicies = [columnIndex, columnIndex + 1, columnIndex + 2];
-                        columnIndex += 3;
-                    }
-
-
-                    // データをcandleDataTableに追加
-                    let candles = result.candles;
-
-                    for (let i = 0; i < candles.length; i++) {
-                        let candle = candles[i];
-                        let date = new Date(candle.time);
-                        let row = [date, candle.low, candle.open, candle.close, candle.high, candle.volume];
-
-                        // EMA
-                        if (emas != undefined) {
-                            row.push(emas1[i]);
-                            row.push(emas2[i]);
-                            row.push(emas3[i]);
-                        }
-
-                        // BBands
-                        if (bbands != undefined) {
-                            row.push(bbDown[i]);
-                            row.push(bbMid[i]);
-                            row.push(bbUp[i]);
-                        }
-
-                        
-                        // Signal events
-                        if (events != undefined){
-                            let event = eventSignals[0];
-                            if (event == undefined){
-                                row.push(null);
-                                row.push(null);
-                            } else if (event.time == candle.time){
-                                row.push(candle.high + 1);
-                                row.push(event.side);
-                                eventSignals.shift();
-                            } else {
-                                row.push(null);
-                                row.push(null);
-                            }
-                        }
-
-                        // RSI
-                        if (rsi != undefined) {
-                            row.push(rsiValues[i]);
-                            row.push(config.analysis.rsi.overbought);
-                            row.push(config.analysis.rsi.oversold);
-                        }
-
-                        // MACD
-                        if (macd != undefined) {
-                            row.push(macdValues[i]);
-                            row.push(macdSignal[i]);
-                            row.push(macdHistogram[i]);
-                        }
-
-                        candleDataTable.addRows([row]);
-                    }
-
-                    // チャートを描画
-                    drawVisualization(candleDataTable);
-                })
-        }
-
-
-
-        // onload
-        $(window).on('load', function () {
-            send();
-
-            // 一定間隔でAPI通信を行い、candleのデータを取得
-            let sendTimerId = setInterval(send, config.api.interval);
-
-            // dashboard中にマウスがあるときはデータの更新をしない
-            $("#dashboard_div").on({
-                "mouseenter mouseover": function(){
-                    config.api.enable = false;
-                },
-                "mouseleave mouseout": function(){
-                    config.api.enable = true;
-                }
-            })
-
-
-            $("#inputApiStop").on("change", function () {
-                config.api.enable = !this.checked;
-            })
-
-            $("#inputLimit").on("change", function(){
-                config.limit = this.value;
-                send();
-            });
-
-            $("#inputEvents").on("change", function () {
-                config.events.enable = this.checked;
-                send();
-                if (!config.events.enable) {
-                    $("#profit").html("");
-                }
-            })
-
-            $("#inputEma").on("change", function () {
-                config.analysis.ema.enable = this.checked;
-                send();
-            });
-
-            $("#inputEmaPeriod1").on("change", function () {
-                config.analysis.ema.period1 = this.value;
-                send();
-
-            });
-            $("#inputEmaPeriod2").on("change", function () {
-                config.analysis.ema.period2 = this.value;
-                send();
-
-            });
-            $("#inputEmaPeriod3").on("change", function () {
-                config.analysis.ema.period3 = this.value;
-                send();
-
-            });
-
-            $("#inputBBands").on("change", function () {
-                config.analysis.bbands.enable = this.checked;
-                send();
-            });
-
-            $("#inputBBandsN").on("change", function () {
-                config.analysis.bbands.n = this.value;
-                send();
-            });
-            $("#inputBBandsK").on("change", function () {
-                config.analysis.bbands.k = this.value;
-                send();
-            });
-
-            $("#inputRSI").on("change", function () {
-                config.analysis.rsi.enable = this.checked;
-                send();
-            });
-            $("#inputRSIPeriod").on("change", function () {
-                config.analysis.rsi.period = this.value;
-                send();
-            });
-
-            $("#inputMACD").on("change", function () {
-                config.analysis.macd.enable = this.checked;
-                send();
-            });
-            $("#inputMACDShortPeriod").on("change", function () {
-                config.analysis.macd.shortPeriod = this.value;
-                send();
-            });
-            $("#inputMACDLongPeriod").on("change", function () {
-                config.analysis.macd.longPeriod = this.value;
-                send();
-            });
-            $("#inputMACDSignalPeriod").on("change", function () {
-                config.analysis.macd.signalPeriod = this.value;
-                send();
-            });
-        })
-
-    </script>
+    <script type="text/javascript" src="/js/index.js"></script>
 </head>
 
 <body>
     <div id="wrapper">
-        <div id="main">
-            <div>
-                <button onclick="changeDuration('1s')">1s</button>
-                <button onclick="changeDuration('1m')">1m</button>
-                <button onclick="changeDuration('1h')">1h</button>
-                <button onclick="changeDuration('1d')">1d</button>
-            </div>
-            <div>
-                Stop <input id="inputApiStop" type="checkbox">
-                Limit <input id="inputLimit" type="text">
-            </div>
-            <div>
-                Signal Events <input id="inputEvents" type="checkbox">
-                <div>
-                    Profit <span id="profit"></span>
-                </div>
-            </div>
-            <div>
-                EMA <input id="inputEma" type="checkbox">
-                Period<input id="inputEmaPeriod1" type="text" value="7" style="width: 50px">
-                <input id="inputEmaPeriod2" type="text" value="14" style="width: 50px">
-                <input id="inputEmaPeriod3" type="text" value="50" style="width: 50px">
-            </div>
-            <div>
-                BBands <input id="inputBBands" type="checkbox">
-                N <input id="inputBBandsN" type="text" value="20" style="width:50px">
-                K <input id="inputBBandsK" type="text" value="2" style="width:50px">
-            </div>
-            <div>
-                RSI <input id="inputRSI" type="checkbox">
-                Period <input id="inputRSIPeriod" type="text" value="14" style="width: 50px">
-            </div>
-            <div>
-                MACD <input id="inputMACD" type="checkbox">
-                Short Period <input id="inputMACDShortPeriod" type="text" value="12" style="width: 50px">
-                Long Period <input id="inputMACDLongPeriod" type="text" value="26" style="width: 50px">
-                Signal Period <input id="inputMACDSignalPeriod" type="text" value="9" style="width: 50px">
+        <div id="main" class="uk-container uk-margin-top">
+            <!-- Durations -->
+            <div id="durations" class="uk-margin" uk-switcher="toggle: > *; active: 1">
+                <button class="uk-button uk-button-default" onclick="changeDuration('1s')">1s</button>
+                <button class="uk-button uk-button-default" onclick="changeDuration('1m')">1m</button>
+                <button class="uk-button uk-button-default" onclick="changeDuration('1h')">1h</button>
+                <button class="uk-button uk-button-default" onclick="changeDuration('1d')">1d</button>
             </div>
 
+            <!-- Tabs -->
+            <div id="tabs">
+                <ul uk-tab>
+                    <li><a href="#">Indicator</a></li>
+                    <li><a href="#">Simulation</a></li>
+                    <li><a href="#">Settings</a></li>
+                </ul>
+                <ul class="uk-switcher uk-margin">
+                    <!-- Indicators -->
+                    <li>
+                        <ul class="uk-list uk-list-divider" uk-accordion>
+                            <li>
+                                <a class="uk-accordion-title uk-text-default" href="#">EMA</a>
+                                <div class="uk-accordion-content">
+                                    <div>
+                                        Enable <input id="inputEma" class="uk-checkbox" type="checkbox">
+                                    </div>
+                                    <div>
+                                        Period
+                                        <input id="inputEmaPeriod1" class="uk-input uk-form-small uk-form-width-xsmall"
+                                            type="text" value="7">
+                                        <input id="inputEmaPeriod2" class="uk-input uk-form-small uk-form-width-xsmall"
+                                            type="text" value="14">
+                                        <input id="inputEmaPeriod3" class="uk-input uk-form-small uk-form-width-xsmall"
+                                            type="text" value="50">
+                                    </div>
+                                </div>
+                            </li>
+                            <li>
+                                <a class="uk-accordion-title uk-text-default" href="#">BBands</a>
+                                <div class="uk-accordion-content">
+                                    <div>
+                                        Enable <input id="inputBBands" class="uk-checkbox" type="checkbox">
+                                    </div>
+                                    <div>
+                                        N <input id="inputBBandsN" class="uk-input uk-form-small uk-form-width-xsmall"
+                                            type="text" value="20">
+                                        K <input id="inputBBandsK" class="uk-input uk-form-small uk-form-width-xsmall"
+                                            type="text" value="2">
+                                    </div>
+                                </div>
+                            </li>
+                            <li>
+                                <a class="uk-accordion-title uk-text-default" href="#">RSI</a>
+                                <div class="uk-accordion-content">
+                                    <div>
+                                        Enable <input id="inputRSI" class="uk-checkbox" type="checkbox">
+                                    </div>
+                                    <div>
+                                        Period <input id="inputRSIPeriod"
+                                            class="uk-input uk-form-small uk-form-width-xsmall" type="text" value="14">
+                                    </div>
+                                </div>
+                            </li>
+                            <li>
+                                <a class="uk-accordion-title uk-text-default" href="#">MACD</a>
+                                <div class="uk-accordion-content">
+                                    <div>
+                                        Enable <input id="inputMACD" class="uk-checkbox" type="checkbox">
+                                    </div>
+                                    <div>
+                                        Short Period <input id="inputMACDShortPeriod"
+                                            class="uk-input uk-form-small uk-form-width-xsmall" type="text" value="12">
+                                        Long Period <input id="inputMACDLongPeriod"
+                                            class="uk-input uk-form-small uk-form-width-xsmall" type="text" value="26">
+                                        Signal Period <input id="inputMACDSignalPeriod"
+                                            class="uk-input uk-form-small uk-form-width-xsmall" type="text" value="9">
+                                    </div>
+                                </div>
+                            </li>
+                            <hr>
+                        </ul>
+                    </li>
+                    <!-- Simulation -->
+                    <li>
+                        <div>
+                            Simulate <input id="inputEvents" class="uk-checkbox" type="checkbox">
+                            <div>
+                                Profit <span id="profit"></span>
+                            </div>
+                        </div>
+                    </li>
+                    <!-- Settings -->
+                    <li>
+                        <div>
+                            <div>
+                                Stop <input id="inputApiStop" class="uk-checkbox" type="checkbox">
+                            </div>
+                            <div>
+                                Limit <input id="inputLimit" class="uk-input uk-form-small uk-form-width-xsmall"
+                                    type="text">
+                            </div>
+                            <div>
+                                Chart size <input id="inputChartSize" class="uk-input uk-form-small uk-form-width-xsmall"
+                                    type="text">
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Dashboard -->
             <div id="dashboard_div">
                 <div id="chart_div" class="chart"></div>
                 <div id="rsi_div" class="chart"></div>
-                <div id="volume_div" class="chart"></div>
                 <div id="macd_div" class="chart"></div>
+                <div id="volume_div" class="chart"></div>
+
                 <div id="filter_div" class="chart"></div>
             </div>
         </div>

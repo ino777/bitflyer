@@ -20,12 +20,14 @@ VIEW_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'views')
 MAX_LIMIT = 1000
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='', static_folder=os.path.join(VIEW_DIR, 'static'))
 # Set a searchpath for template files
 app.jinja_loader = FileSystemLoader(VIEW_DIR)
 
 
 ### utils #####
+
+# Cast strings digits to int type.
 def str2int(strs, defaults):
     if not len(strs) == len(defaults):
         raise IndexError
