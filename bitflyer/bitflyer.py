@@ -14,7 +14,6 @@ import queue
 from dataclasses import dataclass
 
 import requests
-import datetime_truncate
 
 
 from config import config
