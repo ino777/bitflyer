@@ -60,4 +60,4 @@ jobs:
         with:
           app-name: 'simulatebitcointrade'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_FDE404316D17472A9C5595D0F0836B70 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_FE2E84C942F243768F089D30A3F79150 }}
