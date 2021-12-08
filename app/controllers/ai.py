@@ -1,5 +1,6 @@
 import time
 import datetime
+from pytz import timezone
 import logging
 import threading
 
@@ -298,7 +299,7 @@ class AI(object):
                     trade_logger.info({
                         'status': 'order completed',
                         'side': 'BUY',
-                        'time': df.candles[i].time,
+                        'time': df.candles[i].time.isoformat(),
                         'params': buy_params,
                         'stop_limit': self.stop_limit
                     })
@@ -314,10 +315,13 @@ class AI(object):
                     trade_logger.info({
                         'status': 'order completed',
                         'side': 'SELL',
-                        'time': df.candles[i].time,
+                        'time': df.candles[i].time.isoformat(),
                         'params': sell_params,
                         'loss_cut': loss_cut
                     })
+
+                    # パラメータの更新
+                    self.update_optimize_params()
 
         self.last_time = df.candles[-1].time
 
