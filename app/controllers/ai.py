@@ -304,6 +304,8 @@ class AI(object):
                         'stop_limit': self.stop_limit
                     })
 
+                    self.signal_events.signals[-1].notes = "Used indicators : " + str(buy_params)
+
             
             # sell_pointが0より大きい、または終値がstop limitを下回りそうなら売り
             loss_cut = df.candles[i].close < self.stop_limit
@@ -319,6 +321,8 @@ class AI(object):
                         'params': sell_params,
                         'loss_cut': loss_cut
                     })
+
+                    self.signal_events.signals[-1].notes = "Used indicators : " + str(sell_params)
 
                     # パラメータの更新
                     self.update_optimize_params()

@@ -43,11 +43,32 @@
             <!-- Tabs -->
             <div id="tabs">
                 <ul uk-tab>
-                    <li><a href="#">Indicator</a></li>
                     <li><a href="#">Simulation</a></li>
+                    <li><a href="#">Indicator</a></li>
                     <li><a href="#">Settings</a></li>
                 </ul>
                 <ul class="uk-switcher uk-margin">
+                    <!-- Simulation -->
+                    <li>
+                        <div>
+                            <div>
+                                Simulate <input id="inputEvents" class="uk-checkbox" type="checkbox">
+                            </div>
+                            <div>
+                                Profit <span id="profit"></span>
+                            </div>
+                            <div>
+                                <a href="#modalSignalNotes" uk-toggle>Show detail</a>
+                            </div>
+                            <div id="modalSignalNotes" uk-modal>
+                                <div class="uk-modal-dialog uk-modal-body">
+                                    <ul id="signalNotes" class="uk-list uk-list-divider">
+
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
                     <!-- Indicators -->
                     <li>
                         <ul class="uk-list uk-list-divider" uk-accordion>
@@ -113,15 +134,7 @@
                             <hr>
                         </ul>
                     </li>
-                    <!-- Simulation -->
-                    <li>
-                        <div>
-                            Simulate <input id="inputEvents" class="uk-checkbox" type="checkbox">
-                            <div>
-                                Profit <span id="profit"></span>
-                            </div>
-                        </div>
-                    </li>
+
                     <!-- Settings -->
                     <li>
                         <div>
@@ -133,8 +146,8 @@
                                     type="text">
                             </div>
                             <div>
-                                Chart size <input id="inputChartSize" class="uk-input uk-form-small uk-form-width-xsmall"
-                                    type="text">
+                                Chart size <input id="inputChartSize"
+                                    class="uk-input uk-form-small uk-form-width-xsmall" type="text">
                             </div>
                         </div>
                     </li>
@@ -142,13 +155,13 @@
             </div>
 
             <!-- Dashboard -->
-            <div id="dashboard_div">
-                <div id="chart_div" class="chart"></div>
-                <div id="rsi_div" class="chart"></div>
-                <div id="macd_div" class="chart"></div>
-                <div id="volume_div" class="chart"></div>
+            <div id="dashboardDiv">
+                <div id="chartDiv" class="chart"></div>
+                <div id="rsiDiv" class="chart"></div>
+                <div id="macdDiv" class="chart"></div>
+                <div id="volumeDiv" class="chart"></div>
 
-                <div id="filter_div" class="chart"></div>
+                <div id="filterDiv" class="chart"></div>
             </div>
         </div>
     </div>

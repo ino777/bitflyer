@@ -22,6 +22,9 @@ class SignalEvent(object):
         self.side = side
         self.price = price
         self.size = size
+
+        # 備考
+        self.notes = ""
     
     def save(self):
         conn = sqlite3.connect(config.Config.db_name)
@@ -29,9 +32,9 @@ class SignalEvent(object):
 
         curs.execute(
             '''
-            insert or replace into {} (time, product_code, side, price, size) values (?, ?, ?, ?, ?)
+            insert or replace into {} (time, product_code, side, price, size, notes) values (?, ?, ?, ?, ?, ?)
             '''.format(TABLE_NAME_SIGNAL_EVENTS),
-            (self.time.replace(tzinfo=None), self.product_code, self.side, self.price, self.size)
+            (self.time.replace(tzinfo=None), self.product_code, self.side, self.price, self.size, self.notes)
         )
         
         conn.commit()

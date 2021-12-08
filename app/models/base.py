@@ -33,7 +33,8 @@ def init():
             product_code string,
             side string,
             price float,
-            size float
+            size float,
+            notes string
         )
         '''.format(TABLE_NAME_SIGNAL_EVENTS)
     )

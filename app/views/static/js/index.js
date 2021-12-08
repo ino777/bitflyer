@@ -75,12 +75,12 @@ function changeDuration(duration) {
 // チャート図を描画
 function drawVisualization(data) {
     // ダッシュボードを作成
-    let dashboard = new google.visualization.Dashboard($("#dashboard_div")[0]);
+    let dashboard = new google.visualization.Dashboard($("#dashboardDiv")[0]);
 
     // スライダーを作成
     let rangeSlider = new google.visualization.ControlWrapper({
         controlType: "ChartRangeFilter",
-        containerId: "filter_div",
+        containerId: "filterDiv",
         options: {
             filterColumnLabel: "Date",
             ui: {
@@ -106,7 +106,7 @@ function drawVisualization(data) {
     // メインチャートを作成
     let mainChart = new google.visualization.ChartWrapper({
         chartType: "ComboChart",
-        containerId: "chart_div",
+        containerId: "chartDiv",
         options: {
             title: "Chart",
             hAxis: {
@@ -180,7 +180,7 @@ function drawVisualization(data) {
         let oversoldIndex = dataIndicies.numView + dataIndicies.analysis.rsiIndicies[2];
         let rsiChart = new google.visualization.ChartWrapper({
             chartType: "LineChart",
-            containerId: "rsi_div",
+            containerId: "rsiDiv",
             options: {
                 title: "RSI",
                 hAxis: {
@@ -208,7 +208,7 @@ function drawVisualization(data) {
         let histogramIndex = dataIndicies.numView + dataIndicies.analysis.macdIndicies[2];
         let macdChart = new google.visualization.ChartWrapper({
             chartType: "ComboChart",
-            containerId: "macd_div",
+            containerId: "macdDiv",
             options: {
                 title: "MACD",
                 hAxis: {
@@ -226,9 +226,9 @@ function drawVisualization(data) {
             }
         })
         charts.push(macdChart);
-        $("#macd_div").show();
+        $("#macdDiv").show();
     } else {
-        $("#macd_div").hide();
+        $("#macdDiv").hide();
     }
 
 
@@ -237,7 +237,7 @@ function drawVisualization(data) {
     // ボリュームチャートを作成
     let volumeChart = new google.visualization.ChartWrapper({
         chartType: "ColumnChart",
-        containerId: "volume_div",
+        containerId: "volumeDiv",
         options: {
             title: "Volume",
             hAxis: {
@@ -368,6 +368,7 @@ function send() {
             // Signal Events
             let events = result.events;
             let eventSignals = []
+            $("#signalNotes").html("");
             if (events != undefined) {
                 eventSignals = events.signals;
                 // マーカーの位置
@@ -377,6 +378,16 @@ function send() {
                 dataIndicies.eventsIndicies = [columnIndex, columnIndex+1];
                 columnIndex += 2;
 
+                // SignalEventの詳細を表示
+                let formatter = new google.visualization.DateFormat({formatType: "medium"});
+                for(let i=0; i<eventSignals.length; i++){
+                    let event = eventSignals[eventSignals.length - i - 1];
+                    const time = formatter.formatValue(new Date(event.time));
+                    let text = `<li><div> ${time} . ${event.side} . ${event.price}</div> <div> ${event.notes}</div></li>`;
+                    $("#signalNotes").append(text);
+                }
+                
+                // 利益総額を表示
                 let profit = events.profit;
                 $("#profit").html(profit);
             }
@@ -482,7 +493,7 @@ $(window).on('load', function () {
     let sendTimerId = setInterval(send, config.api.interval);
 
     // dashboard中にマウスがあるときはデータの更新をしない
-    $("#dashboard_div").on({
+    $("#dashboardDiv").on({
         "mouseenter mouseover": function(){
             config.api.enable = false;
         },
