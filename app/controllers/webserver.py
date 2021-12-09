@@ -172,5 +172,5 @@ def api_get_candle():
 
 
 def start_webserver():
-    app.debug = True
-    app.run(host='', port=8080)
+    app.debug = False
+    app.run()
