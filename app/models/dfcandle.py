@@ -1,5 +1,4 @@
 import logging
-import pandas
 from dataclasses import dataclass
 from typing import List
 
