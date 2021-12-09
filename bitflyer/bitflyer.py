@@ -7,13 +7,13 @@ import hashlib
 import hmac
 import secrets
 import socket
-import websocket
 import urllib.parse
 import threading
 import queue
 from dataclasses import dataclass
 
 import requests
+import websocket
 
 
 from config import config

@@ -2,3 +2,4 @@ requests==2.21.0
 flask==1.1.1
 jinja2==2.10.1
 pytz==2019.2
+websocket-client==0.57.0
