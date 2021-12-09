@@ -18,4 +18,7 @@ if __name__ == '__main__':
     t = threading.Thread(target=streamdata.stream_ingestion_data)
     t.setDaemon(True)
     t.start()
-    webserver.start_webserver()
+
+    from app.controllers.webserver import app
+    app.debug = False
+    app.run()
