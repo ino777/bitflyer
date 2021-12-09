@@ -19,10 +19,26 @@ logger = getLogger(__name__)
 VIEW_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'views')
 MAX_LIMIT = 1000
 
+# Preprocessing
+def prepare_app():
+    from bitflyer import bitflyer
+    from app.models import base, candle, events
+    base.init()
 
-app = Flask(__name__, static_url_path='', static_folder=os.path.join(VIEW_DIR, 'static'))
-# Set a searchpath for template files
-app.jinja_loader = FileSystemLoader(VIEW_DIR)
+    from app.controllers import streamdata, webserver
+    import threading
+
+    t = threading.Thread(target=streamdata.stream_ingestion_data)
+    t.setDaemon(True)
+    t.start()
+        
+    app = Flask(__name__, static_url_path='', static_folder=os.path.join(VIEW_DIR, 'static'))
+    # Set a searchpath for template files
+    app.jinja_loader = FileSystemLoader(VIEW_DIR)
+
+    return app
+
+app = prepare_app()
 
 
 ### utils #####
