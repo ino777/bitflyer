@@ -4,8 +4,6 @@ import threading
 from config import config
 from utils.logsettings import getLogger
 
-from app.controllers.webserver import app
-
 
 logger = getLogger(__name__)
 
@@ -21,5 +19,6 @@ if __name__ == '__main__':
     t.setDaemon(True)
     t.start()
 
+    from app.controllers.webserver import app
     app.debug = False
     app.run()
