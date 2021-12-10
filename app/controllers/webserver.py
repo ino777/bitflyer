@@ -47,18 +47,6 @@ def str2int(strs, defaults):
 
 @app.route('/', methods=['GET'])
 def view_candle():
-    product_code = request.args.get('product_code', config.Config.product_code)
-    duration = request.args.get('duration', config.Config.trade_duration)
-    
-    str_limit = request.args.get('limit', '100')
-    try:
-        limit = int(str_limit)
-    except ValueError as e:
-        limit = MAX_LIMIT
-    if limit < 0 or limit > MAX_LIMIT:
-        limit = MAX_LIMIT
-    
-    df = candle.get_all_candles(product_code, duration, limit)
     return render_template('index.html')
 
 

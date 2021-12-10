@@ -17,4 +17,9 @@ if __name__ == '__main__':
     
     from app.controllers import streamdata
     
-    streamdata.stream_ingestion_data()
+    t = threading.Thread(target=streamdata.stream_ingestion_data)
+    t.setDaemon(True)
+    t.start()
+
+    app.debug = False
+    app.run()
