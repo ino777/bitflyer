@@ -8,7 +8,7 @@ from utils.logsettings import getLogger
 logger = getLogger(__name__)
 
 
-if __name__ == '__main__':
+def create_app():
     from bitflyer import bitflyer
     from app.models import base, candle, events
     base.init()
@@ -21,4 +21,11 @@ if __name__ == '__main__':
 
     from app.controllers.webserver import app
     app.debug = False
+
+    return app
+
+app = create_app()
+
+
+if __name__ == '__main__':
     app.run()
