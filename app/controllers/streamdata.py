@@ -35,6 +35,10 @@ def stream_ingestion_data():
                         'status': 'start ai trade'
                     })
                     ai.TRADE_AI.trade()
+                
+                # データベースの肥大化を防ぐため、10000個以上前のcandleはデータベースから削除する
+                candle.delete_old_candles(config.Config.product_code, duration, 10000)
+
         except KeyboardInterrupt as err:
             logger.error({
                 'error': err

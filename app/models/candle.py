@@ -185,3 +185,22 @@ def get_all_candles(product_code, duration, limit):
             )
         )
     return df
+
+
+def delete_old_candles(product_code, duration, limit):
+    '''
+    Delete candles whose created time is before the time
+    '''
+    table_name = base.get_candle_table_name(product_code, duration)
+    limit_time = datetime.datetime.now() - config.Config.durations[duration] * limit
+    conn = sqlite3.connect(config.Config.db_name, detect_types=sqlite3.PARSE_DECLTYPES)
+    curs = conn.cursor()
+
+    curs.execute(
+        '''
+        delete from {} where time < ?
+        '''.format(table_name),
+        (limit_time,)
+    )
+    curs.close()
+    conn.close()
