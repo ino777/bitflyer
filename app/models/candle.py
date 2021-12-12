@@ -202,5 +202,6 @@ def delete_old_candles(product_code, duration, limit):
         '''.format(table_name),
         (limit_time,)
     )
+    conn.commit()
     curs.close()
     conn.close()
